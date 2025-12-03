@@ -1,0 +1,101 @@
+---
+title: Init
+description: Initialize a new Zuro project
+---
+
+# Init
+
+The `init` command is the starting point for any Zuro project. It sets up the necessary files and configuration to get you up and running quickly.
+
+## Usage
+
+<Tabs items={['npm', 'pnpm', 'bun']}>
+  <Tab value="npm">
+  ```bash
+  npx zuro-cli init
+  ```
+  </Tab>
+  <Tab value="pnpm">
+  ```bash
+  pnpm dlx zuro-cli init
+  ```
+  </Tab>
+  <Tab value="bun">
+  ```bash
+  bun x zuro-cli init
+  ```
+  </Tab>
+</Tabs>
+
+## Interactive Prompts
+
+When you run the `init` command, you will be asked a few questions to configure your project:
+
+### 1. Project Location
+```text
+Where would you like to create your project? (default: .)
+```
+You can specify a path relative to your current directory. If you leave it blank, it will use the current directory.
+
+### 2. Package Manager
+```text
+Which package manager do you want to use?
+```
+Choose between `npm`, `pnpm`, or `bun`. Zuro will use this to install dependencies.
+
+## What it does
+
+Once you answer the prompts, the `init` command performs the following steps:
+
+1.  **Connects to Registry**: Fetches the latest module definitions from the Zuro Registry.
+2.  **Scaffolds Project**: Creates a `package.json` if one doesn't exist.
+3.  **Installs Dependencies**: Installs the necessary dependencies (like `express`, `zod`, etc.) using your chosen package manager.
+4.  **Generates Files**: Downloads and places the core boilerplate code into your project structure.
+
+## Manual Installation
+
+If you prefer to set up the project manually or want to understand what code is generated, you can copy the following boilerplate code into your project.
+
+### Core Boilerplate
+
+Create a file named `src/index.ts` (or `src/app.ts`) and add the following code:
+
+```typescript title="src/index.ts"
+import express from "express";
+import cors from "cors";
+import helmet from "helmet";
+
+const app = express();
+app.use(helmet());
+app.use(cors());
+app.use(express.json());
+
+app.get("/health", (_req, res) => {
+    res.json({ status: "ok", timestamp: new Date().toISOString() });
+});
+
+export default app;
+```
+
+You will also need to install the required dependencies:
+
+<Tabs items={['npm', 'pnpm', 'bun']}>
+  <Tab value="npm">
+  ```bash
+  npm install express cors helmet
+  npm install -D @types/express @types/cors @types/node typescript ts-node
+  ```
+  </Tab>
+  <Tab value="pnpm">
+  ```bash
+  pnpm add express cors helmet
+  pnpm add -D @types/express @types/cors @types/node typescript ts-node
+  ```
+  </Tab>
+  <Tab value="bun">
+  ```bash
+  bun add express cors helmet
+  bun add -D @types/express @types/cors @types/node typescript ts-node
+  ```
+  </Tab>
+</Tabs>

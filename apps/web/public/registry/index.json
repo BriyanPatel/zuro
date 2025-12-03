@@ -1,0 +1,119 @@
+{
+    "status": "active",
+    "modules": {
+        "core": {
+            "type": "block",
+            "files": [
+                {
+                    "path": "express/app.ts",
+                    "target": "app.ts",
+                    "type": "library"
+                },
+                {
+                    "path": "express/server.ts",
+                    "target": "server.ts",
+                    "type": "library"
+                },
+                {
+                    "path": "express/env.ts",
+                    "target": "env.ts",
+                    "type": "library"
+                },
+                {
+                    "path": "express/lib/logger.ts",
+                    "target": "lib/logger.ts",
+                    "type": "library"
+                },
+                {
+                    "path": "express/tsconfig.json",
+                    "target": "../tsconfig.json",
+                    "type": "config"
+                }
+            ],
+            "dependencies": [
+                "express",
+                "cors",
+                "helmet",
+                "zod",
+                "dotenv",
+                "pino"
+            ],
+            "devDependencies": [
+                "@types/express",
+                "@types/cors",
+                "@types/node",
+                "typescript",
+                "pino-pretty",
+                "tsx",
+                "ts-node"
+            ]
+        },
+        "database-pg": {
+            "type": "block",
+            "files": [
+                {
+                    "path": "express/db/pg/index.ts",
+                    "target": "db/index.ts",
+                    "type": "library"
+                },
+                {
+                    "path": "express/db/pg/schema.ts",
+                    "target": "db/schema.ts",
+                    "type": "library"
+                },
+                {
+                    "path": "express/db/pg/drizzle.config.ts",
+                    "target": "../drizzle.config.ts",
+                    "type": "config"
+                },
+                {
+                    "path": "express/db/env.ts",
+                    "target": "env.ts",
+                    "type": "library"
+                }
+            ],
+            "dependencies": [
+                "core"
+            ],
+            "devDependencies": [
+                "drizzle-orm",
+                "pg",
+                "drizzle-kit",
+                "@types/pg"
+            ]
+        },
+        "database-mysql": {
+            "type": "block",
+            "files": [
+                {
+                    "path": "express/db/mysql/index.ts",
+                    "target": "db/index.ts",
+                    "type": "library"
+                },
+                {
+                    "path": "express/db/mysql/schema.ts",
+                    "target": "db/schema.ts",
+                    "type": "library"
+                },
+                {
+                    "path": "express/db/mysql/drizzle.config.ts",
+                    "target": "../drizzle.config.ts",
+                    "type": "config"
+                },
+                {
+                    "path": "express/db/env.ts",
+                    "target": "env.ts",
+                    "type": "library"
+                }
+            ],
+            "dependencies": [
+                "core"
+            ],
+            "devDependencies": [
+                "drizzle-orm",
+                "mysql2",
+                "drizzle-kit"
+            ]
+        }
+    }
+}

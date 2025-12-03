@@ -1,0 +1,213 @@
+---
+title: Database
+description: Add a database to your project
+---
+
+# Database
+
+The `database` module adds a configured database connection to your Zuro project. It supports both PostgreSQL and MySQL, using Drizzle ORM for type-safe database interactions.
+
+## Usage
+
+<Tabs items={['npm', 'pnpm', 'bun']}>
+  <Tab value="npm">
+  ```bash
+  npx zuro-cli add database
+  ```
+  </Tab>
+  <Tab value="pnpm">
+  ```bash
+  pnpm dlx zuro-cli add database
+  ```
+  </Tab>
+  <Tab value="bun">
+  ```bash
+  bun x zuro-cli add database
+  ```
+  </Tab>
+</Tabs>
+
+## Interactive Prompts
+
+When you run the command, you will be asked to choose a database dialect:
+
+```text
+? Which database dialect?
+> PostgreSQL
+  MySQL
+```
+
+You can also skip the prompt by specifying the variant directly:
+
+```bash
+npx zuro-cli add database-pg
+# or
+npx zuro-cli add database-mysql
+```
+
+## Generated Files
+
+The command generates the following files in your project:
+
+-   `src/db/index.ts`: The database connection setup.
+-   `src/db/schema.ts`: An example database schema.
+-   `drizzle.config.ts`: Configuration for Drizzle Kit.
+-   `src/env.ts`: Environment variable validation (if not already present).
+
+## Manual Installation
+
+If you prefer to set up the database manually, follow the instructions below for your chosen dialect.
+
+### PostgreSQL
+
+1.  **Install Dependencies**
+
+    <Tabs items={['npm', 'pnpm', 'bun']}>
+      <Tab value="npm">
+      ```bash
+      npm install drizzle-orm pg
+      npm install -D drizzle-kit @types/pg
+      ```
+      </Tab>
+      <Tab value="pnpm">
+      ```bash
+      pnpm add drizzle-orm pg
+      pnpm add -D drizzle-kit @types/pg
+      ```
+      </Tab>
+      <Tab value="bun">
+      ```bash
+      bun add drizzle-orm pg
+      bun add -D drizzle-kit @types/pg
+      ```
+      </Tab>
+    </Tabs>
+
+2.  **Create Files**
+
+    Create `src/db/index.ts`:
+
+    ```typescript title="src/db/index.ts"
+    import { drizzle } from "drizzle-orm/node-postgres";
+    import { Pool } from "pg";
+    import { env } from "../env";
+    import * as schema from "./schema";
+
+    const pool = new Pool({
+        connectionString: env.DATABASE_URL,
+    });
+
+    export const db = drizzle(pool, { schema });
+    ```
+
+    Create `src/db/schema.ts`:
+
+    ```typescript title="src/db/schema.ts"
+    import { pgTable, text, timestamp } from "drizzle-orm/pg-core";
+
+    export const example = pgTable("example", {
+        id: text("id").primaryKey(),
+        createdAt: timestamp("created_at").defaultNow(),
+    });
+    ```
+
+    Create `drizzle.config.ts`:
+
+    ```typescript title="drizzle.config.ts"
+    import { defineConfig } from "drizzle-kit";
+    import { env } from "./src/env";
+
+    export default defineConfig({
+        schema: "./src/db/schema.ts",
+        out: "./drizzle",
+        dialect: "postgresql",
+        dbCredentials: {
+            url: env.DATABASE_URL,
+        },
+    });
+    ```
+
+### MySQL
+
+1.  **Install Dependencies**
+
+    <Tabs items={['npm', 'pnpm', 'bun']}>
+      <Tab value="npm">
+      ```bash
+      npm install drizzle-orm mysql2
+      npm install -D drizzle-kit
+      ```
+      </Tab>
+      <Tab value="pnpm">
+      ```bash
+      pnpm add drizzle-orm mysql2
+      pnpm add -D drizzle-kit
+      ```
+      </Tab>
+      <Tab value="bun">
+      ```bash
+      bun add drizzle-orm mysql2
+      bun add -D drizzle-kit
+      ```
+      </Tab>
+    </Tabs>
+
+2.  **Create Files**
+
+    Create `src/db/index.ts`:
+
+    ```typescript title="src/db/index.ts"
+    import { drizzle } from "drizzle-orm/mysql2";
+    import mysql from "mysql2/promise";
+    import { env } from "../env";
+    import * as schema from "./schema";
+
+    const pool = mysql.createPool(env.DATABASE_URL);
+    export const db = drizzle(pool, { schema, mode: "default" });
+    ```
+
+    Create `src/db/schema.ts`:
+
+    ```typescript title="src/db/schema.ts"
+    import { mysqlTable, serial, timestamp } from "drizzle-orm/mysql-core";
+
+    export const example = mysqlTable("example", {
+        id: serial("id").primaryKey(),
+        createdAt: timestamp("created_at").defaultNow(),
+    });
+    ```
+
+    Create `drizzle.config.ts`:
+
+    ```typescript title="drizzle.config.ts"
+    import { defineConfig } from "drizzle-kit";
+    import { env } from "./src/env";
+
+    export default defineConfig({
+        schema: "./src/db/schema.ts",
+        out: "./drizzle",
+        dialect: "mysql",
+        dbCredentials: {
+            url: env.DATABASE_URL,
+        },
+    });
+    ```
+
+### Environment Variables
+
+Ensure you have a `src/env.ts` file to validate your environment variables:
+
+```typescript title="src/env.ts"
+import { config } from "dotenv";
+import { z } from "zod";
+
+config();
+
+const envSchema = z.object({
+    DATABASE_URL: z.string().url(),
+    PORT: z.coerce.number().default(3000),
+    NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
+});
+
+export const env = envSchema.parse(process.env);
+```
