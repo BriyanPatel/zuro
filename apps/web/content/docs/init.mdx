@@ -1,13 +1,15 @@
 ---
 title: Init
-description: Initialize a new Zuro project
+description: Create a production-ready backend in 60 seconds
 ---
 
-# Init
+# Init Command
 
-The `init` command is the starting point for any Zuro project. It sets up the necessary files and configuration to get you up and running quickly.
+Create a new Express.js + TypeScript project with security, logging, and environment validation pre-configured.
 
-## Usage
+---
+
+## Quick Start
 
 <Tabs items={['npm', 'pnpm', 'bun']}>
   <Tab value="npm">
@@ -27,75 +29,235 @@ The `init` command is the starting point for any Zuro project. It sets up the ne
   </Tab>
 </Tabs>
 
-## Interactive Prompts
+---
 
-When you run the `init` command, you will be asked a few questions to configure your project:
+## Interactive Setup
 
-### 1. Project Location
-```text
-Where would you like to create your project? (default: .)
+<Steps>
+<Step>
+### Project Name
+
 ```
-You can specify a path relative to your current directory. If you leave it blank, it will use the current directory.
+  Tip: Leave blank to use current folder (hackathon-project)
 
-### 2. Package Manager
-```text
-Which package manager do you want to use?
-```
-Choose between `npm`, `pnpm`, or `bun`. Zuro will use this to install dependencies.
-
-## What it does
-
-Once you answer the prompts, the `init` command performs the following steps:
-
-1.  **Connects to Registry**: Fetches the latest module definitions from the Zuro Registry.
-2.  **Scaffolds Project**: Creates a `package.json` if one doesn't exist.
-3.  **Installs Dependencies**: Installs the necessary dependencies (like `express`, `zod`, etc.) using your chosen package manager.
-4.  **Generates Files**: Downloads and places the core boilerplate code into your project structure.
-
-## Manual Installation
-
-If you prefer to set up the project manually or want to understand what code is generated, you can copy the following boilerplate code into your project.
-
-### Core Boilerplate
-
-Create a file named `src/index.ts` (or `src/app.ts`) and add the following code:
-
-```typescript title="src/index.ts"
-import express from "express";
-import cors from "cors";
-import helmet from "helmet";
-
-const app = express();
-app.use(helmet());
-app.use(cors());
-app.use(express.json());
-
-app.get("/health", (_req, res) => {
-    res.json({ status: "ok", timestamp: new Date().toISOString() });
-});
-
-export default app;
+? Project name (blank for current folder) ›
 ```
 
-You will also need to install the required dependencies:
+- **Leave blank** → Uses current folder
+- **Enter name** → Creates new folder
+</Step>
 
-<Tabs items={['npm', 'pnpm', 'bun']}>
-  <Tab value="npm">
-  ```bash
-  npm install express cors helmet
-  npm install -D @types/express @types/cors @types/node typescript ts-node
-  ```
-  </Tab>
-  <Tab value="pnpm">
-  ```bash
-  pnpm add express cors helmet
-  pnpm add -D @types/express @types/cors @types/node typescript ts-node
-  ```
-  </Tab>
-  <Tab value="bun">
-  ```bash
-  bun add express cors helmet
-  bun add -D @types/express @types/cors @types/node typescript ts-node
-  ```
-  </Tab>
-</Tabs>
+<Step>
+### Package Manager
+
+```
+? Package Manager? ›
+❯ npm
+  pnpm
+  bun
+```
+</Step>
+
+<Step>
+### Done!
+
+```bash
+cd my-project
+npm run dev
+```
+
+Server runs at `http://localhost:3000`
+</Step>
+</Steps>
+
+---
+
+## What Gets Created
+
+<Files>
+  <Folder name="my-project" defaultOpen>
+    <Folder name="src" defaultOpen>
+      <File name="app.ts" />
+      <File name="server.ts" />
+      <File name="env.ts" />
+      <Folder name="lib" defaultOpen>
+        <File name="logger.ts" />
+      </Folder>
+    </Folder>
+    <File name=".env" />
+    <File name="package.json" />
+    <File name="tsconfig.json" />
+    <File name="zuro.json" />
+  </Folder>
+</Files>
+
+---
+
+## Generated Files
+
+<Accordions type="single">
+  <Accordion title="src/app.ts">
+    ```typescript
+    import express from "express";
+    import cors from "cors";
+    import helmet from "helmet";
+
+    const app = express();
+    app.use(helmet());
+    app.use(cors());
+    app.use(express.json());
+
+    app.get("/health", (_req, res) => {
+        res.json({ status: "ok", timestamp: new Date().toISOString() });
+    });
+
+    export default app;
+    ```
+  </Accordion>
+
+  <Accordion title="src/server.ts">
+    ```typescript
+    import app from "./app";
+    import { env } from "./env";
+    import { logger } from "./lib/logger";
+
+    const PORT = env.PORT || 3000;
+
+    const server = app.listen(PORT, () => {
+        logger.info(`Server running on http://localhost:${PORT}`);
+    });
+
+    // Graceful Shutdown
+    const shutdown = () => {
+        logger.info("Shutting down server...");
+        server.close(() => {
+            logger.info("Server closed.");
+            process.exit(0);
+        });
+    };
+
+    process.on("SIGINT", shutdown);
+    process.on("SIGTERM", shutdown);
+    ```
+  </Accordion>
+
+  <Accordion title="src/env.ts">
+    ```typescript
+    import { config } from "dotenv";
+    import { z } from "zod";
+
+    config();
+
+    const envSchema = z.object({
+        PORT: z.coerce.number().default(3000),
+        NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
+    });
+
+    export const env = envSchema.parse(process.env);
+    ```
+  </Accordion>
+
+  <Accordion title="src/lib/logger.ts">
+    ```typescript
+    import pino from "pino";
+    import { env } from "../env";
+
+    export const logger = pino({
+        level: env.NODE_ENV === "production" ? "info" : "debug",
+        transport:
+            env.NODE_ENV === "development"
+                ? {
+                    target: "pino-pretty",
+                    options: {
+                        colorize: true,
+                        translateTime: "SYS:standard",
+                    },
+                }
+                : undefined,
+    });
+    ```
+  </Accordion>
+
+  <Accordion title=".env">
+    ```bash
+    PORT=3000
+    NODE_ENV=development
+    ```
+  </Accordion>
+</Accordions>
+
+---
+
+## What's Included
+
+| Feature | Library | Description |
+|---------|---------|-------------|
+| **Framework** | Express.js | Fast, minimal web framework |
+| **Language** | TypeScript | Type safety out of the box |
+| **Security** | Helmet | Secure HTTP headers |
+| **CORS** | cors | Cross-origin requests |
+| **Logging** | Pino | Fast JSON logging |
+| **Env Validation** | Zod | Type-safe environment variables |
+
+---
+
+## Running Your Server
+
+```bash
+# Start development server (with hot reload)
+npm run dev
+
+# Build for production
+npm run build
+
+# Start production server
+npm start
+```
+
+Test the health endpoint:
+```bash
+curl http://localhost:3000/health
+# {"status":"ok","timestamp":"2024-01-01T00:00:00.000Z"}
+```
+
+---
+
+## Using With Existing Projects
+
+Already have a project? Run init in your directory:
+
+```bash
+cd existing-project
+npx zuro-cli init
+```
+
+Zuro will:
+- Detect your package manager
+- Add only utility files
+- Install missing dependencies
+
+---
+
+## Next Steps
+
+<div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+  <a href="/docs/database" className="block border border-border rounded-xl p-5 bg-card hover:border-green-500/50 transition-colors no-underline">
+    <h3 className="font-bold text-foreground mb-1">→ Add Database</h3>
+    <p className="text-sm text-muted-foreground">Connect PostgreSQL or MySQL with Drizzle ORM</p>
+  </a>
+
+  <a href="/docs/auth" className="block border border-border rounded-xl p-5 bg-card hover:border-green-500/50 transition-colors no-underline">
+    <h3 className="font-bold text-foreground mb-1">→ Add Auth</h3>
+    <p className="text-sm text-muted-foreground">User signup, login, and sessions</p>
+  </a>
+
+  <a href="/docs/error-handler" className="block border border-border rounded-xl p-5 bg-card hover:border-green-500/50 transition-colors no-underline">
+    <h3 className="font-bold text-foreground mb-1">→ Add Error Handler</h3>
+    <p className="text-sm text-muted-foreground">Consistent API error responses</p>
+  </a>
+
+  <a href="/docs/validator" className="block border border-border rounded-xl p-5 bg-card hover:border-green-500/50 transition-colors no-underline">
+    <h3 className="font-bold text-foreground mb-1">→ Add Validator</h3>
+    <p className="text-sm text-muted-foreground">Request validation with Zod</p>
+  </a>
+</div>

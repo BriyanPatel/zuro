@@ -1,8 +1,12 @@
 {
     "title": "Documentation",
     "pages": [
+        "---Getting Started---",
         "init",
+        "---Modules---",
         "database",
-        "core"
+        "auth",
+        "validator",
+        "error-handler"
     ]
 }

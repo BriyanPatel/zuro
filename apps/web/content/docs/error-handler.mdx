@@ -1,0 +1,414 @@
+---
+title: Error Handler
+description: Consistent error handling across your API
+---
+
+# Error Handler
+
+Centralized error handling with custom error classes, consistent JSON responses, and automatic logging. No more scattered try-catch blocks.
+
+---
+
+## Installation
+
+<Tabs items={['npm', 'pnpm', 'bun']}>
+  <Tab value="npm">
+  ```bash
+  npx zuro-cli add error-handler
+  ```
+  </Tab>
+  <Tab value="pnpm">
+  ```bash
+  pnpm dlx zuro-cli add error-handler
+  ```
+  </Tab>
+  <Tab value="bun">
+  ```bash
+  bun x zuro-cli add error-handler
+  ```
+  </Tab>
+</Tabs>
+
+---
+
+## What Gets Created
+
+<Files>
+  <Folder name="src" defaultOpen>
+    <Folder name="lib" defaultOpen>
+      <File name="errors.ts" />
+    </Folder>
+    <Folder name="middleware" defaultOpen>
+      <File name="error-handler.ts" />
+    </Folder>
+    <File name="app.ts" />
+  </Folder>
+</Files>
+
+The CLI also **auto-configures** your `app.ts` to use the error handler.
+
+---
+
+## Generated Files
+
+<Accordions type="single">
+  <Accordion title="lib/errors.ts">
+    ```typescript
+    export class AppError extends Error {
+        public readonly statusCode: number;
+        public readonly isOperational: boolean;
+        public readonly code: string;
+
+        constructor(message: string, statusCode: number, code?: string) {
+            super(message);
+            this.statusCode = statusCode;
+            this.isOperational = true;
+            this.code = code || this.constructor.name.toUpperCase();
+            Error.captureStackTrace(this, this.constructor);
+        }
+    }
+
+    export class BadRequestError extends AppError {
+        constructor(message = "Bad request", code = "BAD_REQUEST") {
+            super(message, 400, code);
+        }
+    }
+
+    export class UnauthorizedError extends AppError {
+        constructor(message = "Unauthorized", code = "UNAUTHORIZED") {
+            super(message, 401, code);
+        }
+    }
+
+    export class ForbiddenError extends AppError {
+        constructor(message = "Forbidden", code = "FORBIDDEN") {
+            super(message, 403, code);
+        }
+    }
+
+    export class NotFoundError extends AppError {
+        constructor(message = "Not found", code = "NOT_FOUND") {
+            super(message, 404, code);
+        }
+    }
+
+    export class ConflictError extends AppError {
+        constructor(message = "Conflict", code = "CONFLICT") {
+            super(message, 409, code);
+        }
+    }
+
+    export class ValidationError extends AppError {
+        public readonly errors: Array<{ path: string; message: string }>;
+
+        constructor(
+            errors: Array<{ path: string; message: string }>,
+            message = "Validation failed"
+        ) {
+            super(message, 422, "VALIDATION_ERROR");
+            this.errors = errors;
+        }
+    }
+
+    export class InternalServerError extends AppError {
+        constructor(message = "Internal server error", code = "INTERNAL_ERROR") {
+            super(message, 500, code);
+        }
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="middleware/error-handler.ts">
+    ```typescript
+    import { Request, Response, NextFunction } from "express";
+    import { ZodError } from "zod";
+    import { AppError, ValidationError } from "../lib/errors";
+    import { logger } from "../lib/logger";
+    import { env } from "../env";
+
+    interface ErrorResponse {
+        status: "error";
+        code: string;
+        message: string;
+        errors?: Array<{ path: string; message: string }>;
+        stack?: string;
+    }
+
+    export const errorHandler = (
+        err: Error,
+        req: Request,
+        res: Response,
+        _next: NextFunction
+    ) => {
+        logger.error({ err, method: req.method, url: req.url, body: req.body });
+
+        // Handle Zod validation errors
+        if (err instanceof ZodError) {
+            return res.status(422).json({
+                status: "error",
+                code: "VALIDATION_ERROR",
+                message: "Validation failed",
+                errors: err.issues.map((issue) => ({
+                    path: issue.path.join("."),
+                    message: issue.message,
+                })),
+            });
+        }
+
+        // Handle custom AppError
+        if (err instanceof AppError) {
+            const response: ErrorResponse = {
+                status: "error",
+                code: err.code,
+                message: err.message,
+            };
+            if (err instanceof ValidationError) response.errors = err.errors;
+            if (env.NODE_ENV === "development") response.stack = err.stack;
+            return res.status(err.statusCode).json(response);
+        }
+
+        // Handle unknown errors
+        return res.status(500).json({
+            status: "error",
+            code: "INTERNAL_ERROR",
+            message: env.NODE_ENV === "production"
+                ? "Something went wrong"
+                : err.message,
+        });
+    };
+
+    // Wrap async handlers to catch errors
+    export const asyncHandler =
+        (fn: (req: Request, res: Response, next: NextFunction) => Promise<any>) =>
+        (req: Request, res: Response, next: NextFunction) => {
+            Promise.resolve(fn(req, res, next)).catch(next);
+        };
+
+    // 404 handler for unknown routes
+    export const notFoundHandler = (req: Request, res: Response) => {
+        res.status(404).json({
+            status: "error",
+            code: "NOT_FOUND",
+            message: `Route ${req.method} ${req.url} not found`,
+        });
+    };
+    ```
+  </Accordion>
+
+  <Accordion title="app.ts (updated)">
+    ```typescript
+    import express from "express";
+    import cors from "cors";
+    import helmet from "helmet";
+    import { errorHandler, notFoundHandler } from "./middleware/error-handler";
+
+    const app = express();
+
+    app.use(helmet());
+    app.use(cors());
+    app.use(express.json());
+
+    app.get("/health", (_req, res) => {
+        res.json({ status: "ok" });
+    });
+
+    // Your routes go here...
+
+    // Error handling (must be last)
+    app.use(notFoundHandler);
+    app.use(errorHandler);
+
+    export default app;
+    ```
+  </Accordion>
+</Accordions>
+
+---
+
+## Available Error Classes
+
+| Class | Status | Use Case |
+|-------|--------|----------|
+| `BadRequestError` | 400 | Invalid request data |
+| `UnauthorizedError` | 401 | Not logged in |
+| `ForbiddenError` | 403 | Logged in but not allowed |
+| `NotFoundError` | 404 | Resource doesn't exist |
+| `ConflictError` | 409 | Duplicate resource |
+| `ValidationError` | 422 | Schema validation failed |
+| `InternalServerError` | 500 | Unexpected server error |
+
+---
+
+## Usage
+
+<Steps>
+<Step>
+### Import Error Classes
+
+```typescript
+import {
+    NotFoundError,
+    UnauthorizedError,
+    BadRequestError
+} from "./lib/errors";
+```
+</Step>
+
+<Step>
+### Throw Errors in Controllers
+
+```typescript
+export const UserController = {
+    async getUser(req: Request, res: Response) {
+        const user = await db.query.users.findFirst({
+            where: eq(users.id, req.params.id),
+        });
+
+        if (!user) {
+            throw new NotFoundError("User not found");
+        }
+
+        return res.json({ user });
+    },
+};
+```
+</Step>
+
+<Step>
+### Wrap Async Handlers
+
+```typescript
+import { asyncHandler } from "./middleware/error-handler";
+
+const router = Router();
+
+// Errors are automatically caught
+router.get("/:id", asyncHandler(UserController.getUser));
+router.post("/", asyncHandler(UserController.createUser));
+```
+</Step>
+</Steps>
+
+---
+
+## Error Response Format
+
+All errors return a consistent JSON structure:
+
+<Tabs items={['Standard Error', 'Validation Error', 'Development Mode']}>
+  <Tab value="Standard Error">
+    ```json
+    {
+        "status": "error",
+        "code": "NOT_FOUND",
+        "message": "User not found"
+    }
+    ```
+  </Tab>
+  <Tab value="Validation Error">
+    ```json
+    {
+        "status": "error",
+        "code": "VALIDATION_ERROR",
+        "message": "Validation failed",
+        "errors": [
+            { "path": "email", "message": "Invalid email format" },
+            { "path": "password", "message": "Must be at least 8 chars" }
+        ]
+    }
+    ```
+  </Tab>
+  <Tab value="Development Mode">
+    ```json
+    {
+        "status": "error",
+        "code": "NOT_FOUND",
+        "message": "User not found",
+        "stack": "NotFoundError: User not found\n    at UserController..."
+    }
+    ```
+  </Tab>
+</Tabs>
+
+---
+
+## Advanced Usage
+
+<Accordions type="multiple">
+  <Accordion title="Custom Error Codes">
+    ```typescript
+    // Default code
+    throw new NotFoundError("User not found");
+    // Response: { code: "NOT_FOUND", ... }
+
+    // Custom code
+    throw new NotFoundError("User not found", "USER_NOT_FOUND");
+    // Response: { code: "USER_NOT_FOUND", ... }
+    ```
+  </Accordion>
+
+  <Accordion title="Creating Custom Errors">
+    ```typescript
+    import { AppError } from "./lib/errors";
+
+    export class RateLimitError extends AppError {
+        constructor(message = "Too many requests") {
+            super(message, 429, "RATE_LIMIT");
+        }
+    }
+
+    export class PaymentRequiredError extends AppError {
+        constructor(message = "Payment required") {
+            super(message, 402, "PAYMENT_REQUIRED");
+        }
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Throwing Validation Errors">
+    ```typescript
+    import { ValidationError } from "./lib/errors";
+
+    throw new ValidationError([
+        { path: "email", message: "Invalid email format" },
+        { path: "password", message: "Must be at least 8 characters" },
+    ]);
+    ```
+  </Accordion>
+</Accordions>
+
+---
+
+## Integration with Validator
+
+If you have the `validator` module, Zod errors are automatically caught:
+
+```typescript
+import { z } from "zod";
+
+const schema = z.object({
+    email: z.string().email(),
+    password: z.string().min(8),
+});
+
+// If validation fails → 422 with formatted errors
+const data = schema.parse(req.body);
+```
+
+No extra configuration needed—the error handler catches `ZodError` automatically.
+
+---
+
+## Next Steps
+
+<div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+  <a href="/docs/auth" className="block border border-border rounded-xl p-5 bg-card hover:border-green-500/50 transition-colors no-underline">
+    <h3 className="font-bold text-foreground mb-1">→ Add Auth</h3>
+    <p className="text-sm text-muted-foreground">User authentication with Better-Auth</p>
+  </a>
+
+  <a href="/docs/validator" className="block border border-border rounded-xl p-5 bg-card hover:border-green-500/50 transition-colors no-underline">
+    <h3 className="font-bold text-foreground mb-1">→ Add Validator</h3>
+    <p className="text-sm text-muted-foreground">Validate request body, params, and query</p>
+  </a>
+</div>

@@ -10,7 +10,9 @@ export async function initPackageJson(cwd: string, force: boolean = false) {
             version: "0.0.1",
             private: true,
             scripts: {
-                "dev": "ts-node src/server.ts"
+                "dev": "tsx watch src/server.ts",
+                "build": "tsc",
+                "start": "node dist/server.js"
             }
         }, { spaces: 2 });
     }

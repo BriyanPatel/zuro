@@ -3,7 +3,7 @@
     "version": "0.0.1",
     "private": true,
     "scripts": {
-        "build": "copyfiles -u 0 \"express/**/*\" ../../apps/web/public/registry"
+        "build": "find express -name \"*.tmp.*\" -delete && rm -rf ../../apps/web/public/registry/express && copyfiles -u 0 \"express/**/*\" ../../apps/web/public/registry"
     },
     "dependencies": {
         "express": "^4.19.2",

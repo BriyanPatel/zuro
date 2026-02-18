@@ -1,13 +1,15 @@
 ---
 title: Database
-description: Add a database to your project
+description: Add PostgreSQL or MySQL with type-safe queries
 ---
 
 # Database
 
-The `database` module adds a configured database connection to your Zuro project. It supports both PostgreSQL and MySQL, using Drizzle ORM for type-safe database interactions.
+Add a fully configured database connection with Drizzle ORM. Type-safe queries, migrations ready, zero config headaches.
 
-## Usage
+---
+
+## Installation
 
 <Tabs items={['npm', 'pnpm', 'bun']}>
   <Tab value="npm">
@@ -27,67 +29,61 @@ The `database` module adds a configured database connection to your Zuro project
   </Tab>
 </Tabs>
 
-## Interactive Prompts
+---
 
-When you run the command, you will be asked to choose a database dialect:
+## Interactive Setup
 
-```text
-? Which database dialect?
-> PostgreSQL
+<Steps>
+<Step>
+### Choose Database
+
+```
+? Which database dialect? ›
+❯ PostgreSQL
   MySQL
 ```
+</Step>
 
-You can also skip the prompt by specifying the variant directly:
+<Step>
+### Enter Database URL
 
-```bash
-npx zuro-cli add database-pg
-# or
-npx zuro-cli add database-mysql
 ```
+  Tip: Leave blank to use postgresql://root@localhost:5432/mydb
+
+? Database URL ›
+```
+
+**Default URLs:**
+- PostgreSQL: `postgresql://root@localhost:5432/mydb`
+- MySQL: `mysql://root@localhost:3306/mydb`
+</Step>
+</Steps>
+
+---
+
+## What Gets Created
+
+<Files>
+  <Folder name="src" defaultOpen>
+    <Folder name="db" defaultOpen>
+      <File name="index.ts" />
+      <Folder name="schema" defaultOpen>
+        <File name="index.ts" />
+      </Folder>
+    </Folder>
+    <File name="env.ts" />
+  </Folder>
+  <File name="drizzle.config.ts" />
+  <File name=".env" />
+</Files>
+
+---
 
 ## Generated Files
 
-The command generates the following files in your project:
-
--   `src/db/index.ts`: The database connection setup.
--   `src/db/schema.ts`: An example database schema.
--   `drizzle.config.ts`: Configuration for Drizzle Kit.
--   `src/env.ts`: Environment variable validation (if not already present).
-
-## Manual Installation
-
-If you prefer to set up the database manually, follow the instructions below for your chosen dialect.
-
-### PostgreSQL
-
-1.  **Install Dependencies**
-
-    <Tabs items={['npm', 'pnpm', 'bun']}>
-      <Tab value="npm">
-      ```bash
-      npm install drizzle-orm pg
-      npm install -D drizzle-kit @types/pg
-      ```
-      </Tab>
-      <Tab value="pnpm">
-      ```bash
-      pnpm add drizzle-orm pg
-      pnpm add -D drizzle-kit @types/pg
-      ```
-      </Tab>
-      <Tab value="bun">
-      ```bash
-      bun add drizzle-orm pg
-      bun add -D drizzle-kit @types/pg
-      ```
-      </Tab>
-    </Tabs>
-
-2.  **Create Files**
-
-    Create `src/db/index.ts`:
-
-    ```typescript title="src/db/index.ts"
+<Accordions type="single">
+  <Accordion title="db/index.ts (PostgreSQL)">
+    ```typescript
     import { drizzle } from "drizzle-orm/node-postgres";
     import { Pool } from "pg";
     import { env } from "../env";
@@ -99,64 +95,10 @@ If you prefer to set up the database manually, follow the instructions below for
 
     export const db = drizzle(pool, { schema });
     ```
+  </Accordion>
 
-    Create `src/db/schema.ts`:
-
-    ```typescript title="src/db/schema.ts"
-    import { pgTable, text, timestamp } from "drizzle-orm/pg-core";
-
-    export const example = pgTable("example", {
-        id: text("id").primaryKey(),
-        createdAt: timestamp("created_at").defaultNow(),
-    });
-    ```
-
-    Create `drizzle.config.ts`:
-
-    ```typescript title="drizzle.config.ts"
-    import { defineConfig } from "drizzle-kit";
-    import { env } from "./src/env";
-
-    export default defineConfig({
-        schema: "./src/db/schema.ts",
-        out: "./drizzle",
-        dialect: "postgresql",
-        dbCredentials: {
-            url: env.DATABASE_URL,
-        },
-    });
-    ```
-
-### MySQL
-
-1.  **Install Dependencies**
-
-    <Tabs items={['npm', 'pnpm', 'bun']}>
-      <Tab value="npm">
-      ```bash
-      npm install drizzle-orm mysql2
-      npm install -D drizzle-kit
-      ```
-      </Tab>
-      <Tab value="pnpm">
-      ```bash
-      pnpm add drizzle-orm mysql2
-      pnpm add -D drizzle-kit
-      ```
-      </Tab>
-      <Tab value="bun">
-      ```bash
-      bun add drizzle-orm mysql2
-      bun add -D drizzle-kit
-      ```
-      </Tab>
-    </Tabs>
-
-2.  **Create Files**
-
-    Create `src/db/index.ts`:
-
-    ```typescript title="src/db/index.ts"
+  <Accordion title="db/index.ts (MySQL)">
+    ```typescript
     import { drizzle } from "drizzle-orm/mysql2";
     import mysql from "mysql2/promise";
     import { env } from "../env";
@@ -165,49 +107,204 @@ If you prefer to set up the database manually, follow the instructions below for
     const pool = mysql.createPool(env.DATABASE_URL);
     export const db = drizzle(pool, { schema, mode: "default" });
     ```
+  </Accordion>
 
-    Create `src/db/schema.ts`:
-
-    ```typescript title="src/db/schema.ts"
-    import { mysqlTable, serial, timestamp } from "drizzle-orm/mysql-core";
-
-    export const example = mysqlTable("example", {
-        id: serial("id").primaryKey(),
-        createdAt: timestamp("created_at").defaultNow(),
-    });
-    ```
-
-    Create `drizzle.config.ts`:
-
-    ```typescript title="drizzle.config.ts"
+  <Accordion title="drizzle.config.ts">
+    ```typescript
     import { defineConfig } from "drizzle-kit";
-    import { env } from "./src/env";
 
     export default defineConfig({
-        schema: "./src/db/schema.ts",
+        schema: "./src/db/schema/*",
         out: "./drizzle",
-        dialect: "mysql",
+        dialect: "postgresql", // or "mysql"
         dbCredentials: {
-            url: env.DATABASE_URL,
+            url: process.env.DATABASE_URL!,
         },
     });
     ```
+  </Accordion>
 
-### Environment Variables
+  <Accordion title="db/schema/index.ts">
+    ```typescript
+    // Export all schema files from this folder
+    // Add your schema exports here as you create new tables
 
-Ensure you have a `src/env.ts` file to validate your environment variables:
+    // Example:
+    // export * from "./users";
+    // export * from "./posts";
+    ```
+  </Accordion>
+</Accordions>
 
-```typescript title="src/env.ts"
-import { config } from "dotenv";
-import { z } from "zod";
+---
 
-config();
+## Usage
 
-const envSchema = z.object({
-    DATABASE_URL: z.string().url(),
-    PORT: z.coerce.number().default(3000),
-    NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
+<Steps>
+<Step>
+### Create a Schema
+
+```typescript title="src/db/schema/posts.ts"
+import { pgTable, text, timestamp } from "drizzle-orm/pg-core";
+
+export const posts = pgTable("posts", {
+    id: text("id").primaryKey(),
+    title: text("title").notNull(),
+    content: text("content"),
+    createdAt: timestamp("created_at").defaultNow(),
+});
+```
+</Step>
+
+<Step>
+### Export from Index
+
+```typescript title="src/db/schema/index.ts"
+export * from "./posts";
+```
+</Step>
+
+<Step>
+### Run Migrations
+
+```bash
+npx drizzle-kit generate
+npx drizzle-kit migrate
+```
+</Step>
+
+<Step>
+### Query Your Data
+
+```typescript
+import { db } from "./db";
+import { posts } from "./db/schema";
+import { eq } from "drizzle-orm";
+
+// Insert
+await db.insert(posts).values({
+    id: "1",
+    title: "Hello World",
 });
 
-export const env = envSchema.parse(process.env);
+// Select all
+const allPosts = await db.select().from(posts);
+
+// Select with filter
+const post = await db.select()
+    .from(posts)
+    .where(eq(posts.id, "1"));
 ```
+</Step>
+</Steps>
+
+---
+
+## Environment Setup
+
+The CLI automatically updates your `.env` and `env.ts`:
+
+<Tabs items={['.env', 'env.ts']}>
+  <Tab value=".env">
+    ```bash
+    PORT=3000
+    NODE_ENV=development
+    DATABASE_URL=postgresql://root@localhost:5432/mydb
+    ```
+  </Tab>
+  <Tab value="env.ts">
+    ```typescript
+    const envSchema = z.object({
+        PORT: z.coerce.number().default(3000),
+        NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
+        DATABASE_URL: z.string().url(),  // ← Added
+    });
+    ```
+  </Tab>
+</Tabs>
+
+---
+
+## Common Database URLs
+
+| Database | URL Format |
+|----------|------------|
+| PostgreSQL (local) | `postgresql://root@localhost:5432/mydb` |
+| PostgreSQL (with password) | `postgresql://user:password@localhost:5432/mydb` |
+| MySQL (local) | `mysql://root@localhost:3306/mydb` |
+| MySQL (with password) | `mysql://root:password@localhost:3306/mydb` |
+| Neon | `postgresql://user:pass@ep-xxx.neon.tech/mydb?sslmode=require` |
+| PlanetScale | `mysql://user:pass@aws.connect.psdb.cloud/mydb?ssl=...` |
+
+---
+
+## Drizzle Kit Commands
+
+| Command | Description |
+|---------|-------------|
+| `npx drizzle-kit generate` | Generate migration files |
+| `npx drizzle-kit migrate` | Apply migrations |
+| `npx drizzle-kit studio` | Open database GUI |
+| `npx drizzle-kit push` | Push schema directly (dev only) |
+
+---
+
+## Schema Examples
+
+<Accordions type="multiple">
+  <Accordion title="Users Table">
+    ```typescript title="src/db/schema/users.ts"
+    import { pgTable, text, timestamp, boolean } from "drizzle-orm/pg-core";
+
+    export const users = pgTable("users", {
+        id: text("id").primaryKey(),
+        email: text("email").notNull().unique(),
+        name: text("name").notNull(),
+        isActive: boolean("is_active").default(true),
+        createdAt: timestamp("created_at").defaultNow(),
+    });
+    ```
+  </Accordion>
+
+  <Accordion title="Posts with Relations">
+    ```typescript title="src/db/schema/posts.ts"
+    import { pgTable, text, timestamp } from "drizzle-orm/pg-core";
+    import { users } from "./users";
+
+    export const posts = pgTable("posts", {
+        id: text("id").primaryKey(),
+        title: text("title").notNull(),
+        content: text("content"),
+        authorId: text("author_id").references(() => users.id),
+        createdAt: timestamp("created_at").defaultNow(),
+    });
+    ```
+  </Accordion>
+
+  <Accordion title="Query with Relations">
+    ```typescript
+    // Get posts with author
+    const postsWithAuthors = await db.query.posts.findMany({
+        with: {
+            author: true,
+        },
+    });
+    ```
+  </Accordion>
+</Accordions>
+
+---
+
+## Next Steps
+
+<div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+  <a href="/docs/auth" className="block border border-border rounded-xl p-5 bg-card hover:border-green-500/50 transition-colors no-underline">
+    <h3 className="font-bold text-foreground mb-1">→ Add Auth</h3>
+    <p className="text-sm text-muted-foreground">User authentication with Better-Auth</p>
+  </a>
+
+  <a href="/docs/error-handler" className="block border border-border rounded-xl p-5 bg-card hover:border-green-500/50 transition-colors no-underline">
+    <h3 className="font-bold text-foreground mb-1">→ Add Error Handler</h3>
+    <p className="text-sm text-muted-foreground">Consistent API error responses</p>
+  </a>
+</div>

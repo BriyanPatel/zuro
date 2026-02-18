@@ -5,6 +5,7 @@ import path from "path";
 import prompts from "prompts";
 import { fetchRegistry, fetchFile } from "../utils/registry";
 import { initPackageJson, installDependencies } from "../utils/pm";
+import { createInitialEnv } from "../utils/env-manager";
 
 export async function init() {
     const cwd = process.cwd();
@@ -13,7 +14,7 @@ export async function init() {
     let targetDir = cwd;
     let pm = "npm";
     let srcDir = "src";
-    let projectName = "my-api";
+    let projectName = path.basename(cwd);
 
     if (isExistingProject) {
         console.log(chalk.blue("ℹ Existing project detected."));
@@ -35,12 +36,15 @@ export async function init() {
         srcDir = response.srcDir || "src";
 
     } else {
+        // Show hint about using current folder
+        console.log(chalk.dim(`  Tip: Leave blank to use current folder (${path.basename(cwd)})\n`));
+
         const response = await prompts([
             {
                 type: 'text',
                 name: 'path',
-                message: 'Project Name?',
-                initial: 'my-api',
+                message: 'Project name (blank for current folder)',
+                initial: '',
             },
             {
                 type: 'select',
@@ -55,24 +59,31 @@ export async function init() {
             }
         ]);
 
-        if (!response.path || !response.pm) {
+        if (response.pm === undefined) {
             console.log(chalk.red("Operation cancelled."));
             return;
         }
 
-        projectName = response.path;
         pm = response.pm;
-        srcDir = "src"; // Default for new projects
-        targetDir = path.resolve(cwd, projectName);
+        srcDir = "src";
 
-        await fs.ensureDir(targetDir);
+        // Check if user left project name blank - use current folder
+        if (!response.path || response.path.trim() === '') {
+            projectName = path.basename(cwd);
+            targetDir = cwd;
+            console.log(chalk.blue(`ℹ Using current folder: ${projectName}`));
+        } else {
+            projectName = response.path.trim();
+            targetDir = path.resolve(cwd, projectName);
+            await fs.ensureDir(targetDir);
+        }
     }
 
     // Generate zuro.json
     const zuroConfig = {
         name: projectName,
         pm,
-        src: srcDir
+        srcDir
     };
     await fs.writeJson(path.join(targetDir, "zuro.json"), zuroConfig, { spaces: 2 });
 
@@ -89,7 +100,9 @@ export async function init() {
 
         spinner.text = "Initializing project...";
 
-        if (!isExistingProject) {
+        // Initialize package.json if it doesn't exist
+        const hasPackageJson = await fs.pathExists(path.join(targetDir, "package.json"));
+        if (!hasPackageJson) {
             await initPackageJson(targetDir, true);
         }
 
@@ -97,12 +110,9 @@ export async function init() {
 
         let depsToInstall: string[] = [];
         if (isExistingProject) {
-            // Only install devDependencies for existing projects
-            // AND crucial dependencies for utility files (zod, dotenv)
             const safeDeps = ['zod', 'dotenv'];
             const coreDeps = coreModule.dependencies || [];
             const deps = coreDeps.filter((d: string) => safeDeps.includes(d));
-
             depsToInstall = [...deps, ...(coreModule.devDependencies || [])];
         } else {
             depsToInstall = [...(coreModule.dependencies || []), ...(coreModule.devDependencies || [])];
@@ -113,19 +123,14 @@ export async function init() {
         spinner.text = "Fetching core module files...";
 
         for (const file of coreModule.files) {
-            // Adjust target path based on srcDir
-            // Registry now has path-agnostic targets (e.g. "app.ts", "../drizzle.config.ts")
             const relativeTargetPath = path.join(srcDir, file.target);
             const targetPath = path.join(targetDir, relativeTargetPath);
             const fileName = path.basename(targetPath);
 
             if (isExistingProject) {
-                // Safety check: DO NOT overwrite app.ts or server.ts
                 if (fileName === 'app.ts' || fileName === 'server.ts') {
                     continue;
                 }
-
-                // Only write utility files
                 const isSafe = fileName === 'env.ts' || relativeTargetPath.includes('lib/');
                 if (!isSafe) continue;
             }
@@ -135,7 +140,19 @@ export async function init() {
             await fs.writeFile(targetPath, content);
         }
 
-        spinner.succeed(chalk.green(`✔ Project initialized in ${targetDir} using ${pm}!`));
+        // Create initial .env file
+        await createInitialEnv(targetDir);
+
+        spinner.succeed(chalk.green(`Project initialized successfully!`));
+
+        // Show next steps
+        console.log('\n' + chalk.bold('Next steps:'));
+        if (targetDir !== cwd) {
+            console.log(chalk.cyan(`  cd ${projectName}`));
+        }
+        console.log(chalk.cyan(`  ${pm} run dev`));
+        console.log('\n' + chalk.dim('Add modules: zuro add database, zuro add auth'));
+
     } catch (error) {
         spinner.fail(chalk.red("Failed to initialize project."));
         console.error(error);

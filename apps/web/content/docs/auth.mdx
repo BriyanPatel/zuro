@@ -1,0 +1,468 @@
+---
+title: Authentication
+description: Add user auth in one command
+---
+
+# Authentication
+
+Complete user authentication with signup, login, sessions, and protected routes. Powered by Better-Auth with zero configuration.
+
+---
+
+## Installation
+
+<Callout type="info">
+**Smart dependencies:** The CLI automatically installs required modules if they're missing. Running `zuro add auth` will also set up database, validator, and error-handler for you!
+</Callout>
+
+<Tabs items={['npm', 'pnpm', 'bun']}>
+  <Tab value="npm">
+  ```bash
+  npx zuro-cli add auth
+  ```
+  </Tab>
+  <Tab value="pnpm">
+  ```bash
+  pnpm dlx zuro-cli add auth
+  ```
+  </Tab>
+  <Tab value="bun">
+  ```bash
+  bun x zuro-cli add auth
+  ```
+  </Tab>
+</Tabs>
+
+---
+
+## What Gets Created
+
+<Files>
+  <Folder name="src" defaultOpen>
+    <Folder name="lib" defaultOpen>
+      <File name="auth.ts" />
+    </Folder>
+    <Folder name="routes" defaultOpen>
+      <File name="auth.routes.ts" />
+      <File name="user.routes.ts" />
+    </Folder>
+    <Folder name="controllers" defaultOpen>
+      <File name="user.controller.ts" />
+    </Folder>
+    <Folder name="db">
+      <Folder name="schema" defaultOpen>
+        <File name="auth.ts" />
+      </Folder>
+    </Folder>
+    <File name="app.ts" />
+  </Folder>
+  <File name=".env" />
+</Files>
+
+The CLI **auto-configures** everything:
+- Installs missing dependencies (database, validator, error-handler)
+- Registers routes in `app.ts`
+- Adds environment variables to `.env`
+- Sets up error handling middleware
+
+---
+
+## Generated Files
+
+<Accordions type="single">
+  <Accordion title="lib/auth.ts">
+    ```typescript
+    import { betterAuth } from "better-auth";
+    import { drizzleAdapter } from "better-auth/adapters/drizzle";
+    import { openAPI } from "better-auth/plugins";
+    import { db } from "../db/index";
+    import { env } from "../env";
+
+    export const auth = betterAuth({
+        database: drizzleAdapter(db, {
+            provider: "pg",
+        }),
+        emailAndPassword: { enabled: true },
+        plugins: [openAPI()],
+        secret: env.BETTER_AUTH_SECRET,
+        baseURL: env.BETTER_AUTH_URL,
+    });
+    ```
+  </Accordion>
+
+  <Accordion title="routes/auth.routes.ts">
+    ```typescript
+    import { Router } from "express";
+    import { toNodeHandler } from "better-auth/node";
+    import { auth } from "../lib/auth";
+
+    const router = Router();
+    router.all("/auth/*", toNodeHandler(auth));
+    export default router;
+    ```
+  </Accordion>
+
+  <Accordion title="routes/user.routes.ts">
+    ```typescript
+    import { Router } from "express";
+    import { UserController } from "../controllers/user.controller";
+    import { asyncHandler } from "../middleware/error-handler";
+
+    const router = Router();
+    router.get("/me", asyncHandler(UserController.getProfile));
+    export default router;
+    ```
+  </Accordion>
+
+  <Accordion title="controllers/user.controller.ts">
+    ```typescript
+    import { Request, Response } from "express";
+    import { auth } from "../lib/auth";
+    import { fromNodeHeaders } from "better-auth/node";
+    import { UnauthorizedError } from "../lib/errors";
+
+    export const UserController = {
+        async getProfile(req: Request, res: Response) {
+            const session = await auth.api.getSession({
+                headers: fromNodeHeaders(req.headers),
+            });
+
+            if (!session) {
+                throw new UnauthorizedError("Not authenticated");
+            }
+
+            return res.json({ user: session.user });
+        },
+    };
+    ```
+  </Accordion>
+
+  <Accordion title="db/schema/auth.ts">
+    ```typescript
+    import { pgTable, text, timestamp, boolean } from "drizzle-orm/pg-core";
+
+    export const user = pgTable("user", {
+        id: text("id").primaryKey(),
+        name: text("name").notNull(),
+        email: text("email").notNull().unique(),
+        emailVerified: boolean("email_verified").notNull(),
+        image: text("image"),
+        createdAt: timestamp("created_at").notNull(),
+        updatedAt: timestamp("updated_at").notNull(),
+    });
+
+    export const session = pgTable("session", {
+        id: text("id").primaryKey(),
+        expiresAt: timestamp("expires_at").notNull(),
+        token: text("token").notNull().unique(),
+        createdAt: timestamp("created_at").notNull(),
+        updatedAt: timestamp("updated_at").notNull(),
+        ipAddress: text("ip_address"),
+        userAgent: text("user_agent"),
+        userId: text("user_id").notNull().references(() => user.id),
+    });
+
+    export const account = pgTable("account", {
+        id: text("id").primaryKey(),
+        accountId: text("account_id").notNull(),
+        providerId: text("provider_id").notNull(),
+        userId: text("user_id").notNull().references(() => user.id),
+        accessToken: text("access_token"),
+        refreshToken: text("refresh_token"),
+        idToken: text("id_token"),
+        accessTokenExpiresAt: timestamp("access_token_expires_at"),
+        refreshTokenExpiresAt: timestamp("refresh_token_expires_at"),
+        scope: text("scope"),
+        password: text("password"),
+        createdAt: timestamp("created_at").notNull(),
+        updatedAt: timestamp("updated_at").notNull(),
+    });
+
+    export const verification = pgTable("verification", {
+        id: text("id").primaryKey(),
+        identifier: text("identifier").notNull(),
+        value: text("value").notNull(),
+        expiresAt: timestamp("expires_at").notNull(),
+        createdAt: timestamp("created_at"),
+        updatedAt: timestamp("updated_at"),
+    });
+    ```
+  </Accordion>
+</Accordions>
+
+---
+
+## Setup Steps
+
+<Steps>
+<Step>
+### Update Your Secret
+
+Open `.env` and replace the placeholder:
+
+```bash title=".env"
+BETTER_AUTH_SECRET=your-secret-key-at-least-32-characters
+BETTER_AUTH_URL=http://localhost:3000
+```
+
+Generate a secure secret:
+```bash
+openssl rand -base64 32
+```
+</Step>
+
+<Step>
+### Run Database Migrations
+
+```bash
+npx drizzle-kit generate
+npx drizzle-kit migrate
+```
+
+This creates the `user`, `session`, `account`, and `verification` tables.
+</Step>
+
+<Step>
+### Start Your Server
+
+```bash
+npm run dev
+```
+
+Auth endpoints are now live at `/auth/*`
+</Step>
+</Steps>
+
+---
+
+## API Endpoints
+
+### Auth Routes
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/auth/sign-up/email` | POST | Create account |
+| `/auth/sign-in/email` | POST | Login |
+| `/auth/sign-out` | POST | Logout |
+| `/auth/session` | GET | Get current session |
+
+### User Routes
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/users/me` | GET | Get authenticated user |
+
+---
+
+## Testing Auth
+
+<Tabs items={['Sign Up', 'Sign In', 'Get User']}>
+  <Tab value="Sign Up">
+    ```bash
+    curl -X POST http://localhost:3000/auth/sign-up/email \
+      -H "Content-Type: application/json" \
+      -d '{
+        "email": "test@example.com",
+        "password": "password123",
+        "name": "Test User"
+      }'
+    ```
+  </Tab>
+  <Tab value="Sign In">
+    ```bash
+    curl -X POST http://localhost:3000/auth/sign-in/email \
+      -H "Content-Type: application/json" \
+      -d '{
+        "email": "test@example.com",
+        "password": "password123"
+      }'
+    ```
+
+    Response:
+    ```json
+    {
+      "token": "eyJhbGc...",
+      "user": {
+        "id": "user_123",
+        "email": "test@example.com",
+        "name": "Test User"
+      }
+    }
+    ```
+  </Tab>
+  <Tab value="Get User">
+    ```bash
+    curl http://localhost:3000/api/users/me \
+      -H "Authorization: Bearer YOUR_TOKEN"
+    ```
+  </Tab>
+</Tabs>
+
+---
+
+## Protecting Routes
+
+Use the auth helper in your controllers:
+
+```typescript title="src/controllers/example.controller.ts"
+import { Request, Response } from "express";
+import { auth } from "../lib/auth";
+import { fromNodeHeaders } from "better-auth/node";
+import { UnauthorizedError } from "../lib/errors";
+
+export const ExampleController = {
+    async protectedRoute(req: Request, res: Response) {
+        const session = await auth.api.getSession({
+            headers: fromNodeHeaders(req.headers),
+        });
+
+        if (!session) {
+            throw new UnauthorizedError();
+        }
+
+        return res.json({
+            message: "Hello!",
+            user: session.user
+        });
+    },
+};
+```
+
+---
+
+## Database Tables
+
+<Accordions type="multiple">
+  <Accordion title="user">
+    | Column | Type | Description |
+    |--------|------|-------------|
+    | `id` | text | Primary key |
+    | `name` | text | User's name |
+    | `email` | text | Unique email |
+    | `emailVerified` | boolean | Email verified status |
+    | `image` | text | Profile image URL |
+    | `createdAt` | timestamp | Creation date |
+    | `updatedAt` | timestamp | Last update |
+  </Accordion>
+
+  <Accordion title="session">
+    | Column | Type | Description |
+    |--------|------|-------------|
+    | `id` | text | Primary key |
+    | `token` | text | Session token |
+    | `expiresAt` | timestamp | Expiration date |
+    | `userId` | text | Foreign key to user |
+    | `ipAddress` | text | Client IP |
+    | `userAgent` | text | Browser info |
+  </Accordion>
+
+  <Accordion title="account">
+    | Column | Type | Description |
+    |--------|------|-------------|
+    | `id` | text | Primary key |
+    | `providerId` | text | OAuth provider |
+    | `userId` | text | Foreign key to user |
+    | `accessToken` | text | OAuth access token |
+    | `password` | text | Hashed password |
+  </Accordion>
+</Accordions>
+
+---
+
+## Frontend Integration
+
+<Callout type="warn">
+**Use environment variables for API URLs.** Never hardcode `localhost` — use `NEXT_PUBLIC_API_URL` or similar so you can easily switch to production.
+</Callout>
+
+<Tabs items={['React (Next.js)', 'Vanilla JS']}>
+  <Tab value="React (Next.js)">
+    ```typescript title="lib/auth-client.ts"
+    import { createAuthClient } from "better-auth/react";
+
+    // Use env variable for API URL
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
+
+    export const authClient = createAuthClient({
+        baseURL: API_URL,
+    });
+
+    // Sign up
+    await authClient.signUp.email({
+        email: "user@example.com",
+        password: "password",
+        name: "John Doe",
+    });
+
+    // Sign in
+    const { data } = await authClient.signIn.email({
+        email: "user@example.com",
+        password: "password",
+    });
+
+    // Get session
+    const session = await authClient.getSession();
+    ```
+
+    ```bash title=".env.local"
+    # Development
+    NEXT_PUBLIC_API_URL=http://localhost:3000
+
+    # Production (change when deploying)
+    # NEXT_PUBLIC_API_URL=https://api.yourapp.com
+    ```
+  </Tab>
+  <Tab value="Vanilla JS">
+    ```javascript
+    // Use env variable or config for API URL
+    const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
+
+    // Sign in
+    const response = await fetch(`${API_URL}/auth/sign-in/email`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            email: "user@example.com",
+            password: "password",
+        }),
+    });
+
+    const { token, user } = await response.json();
+
+    // Use token for authenticated requests
+    const meResponse = await fetch(`${API_URL}/api/users/me`, {
+        headers: { "Authorization": `Bearer ${token}` },
+    });
+    ```
+
+    ```bash title=".env"
+    # For Vite projects
+    VITE_API_URL=http://localhost:3000
+    ```
+  </Tab>
+</Tabs>
+
+---
+
+## Environment Variables
+
+| Variable | Description |
+|----------|-------------|
+| `BETTER_AUTH_SECRET` | Secret key for signing tokens (min 32 chars) |
+| `BETTER_AUTH_URL` | Your API base URL |
+
+---
+
+## Next Steps
+
+<div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+  <a href="/docs/validator" className="block border border-border rounded-xl p-5 bg-card hover:border-green-500/50 transition-colors no-underline">
+    <h3 className="font-bold text-foreground mb-1">→ Add Validator</h3>
+    <p className="text-sm text-muted-foreground">Validate signup/login payloads with Zod</p>
+  </a>
+
+  <a href="/docs/database" className="block border border-border rounded-xl p-5 bg-card hover:border-green-500/50 transition-colors no-underline">
+    <h3 className="font-bold text-foreground mb-1">← Database Docs</h3>
+    <p className="text-sm text-muted-foreground">Learn more about Drizzle queries</p>
+  </a>
+</div>

@@ -1,0 +1,292 @@
+---
+title: Validator
+description: Type-safe request validation with Zod middleware
+---
+
+# Validator
+
+Type-safe request validation for your routes. Stop trusting user input—validate it with Zod and get TypeScript types for free.
+
+> **No more `any` types.** Your `req.body`, `req.query`, and `req.params` are fully typed after validation.
+
+---
+
+## Installation
+
+<Tabs items={['npm', 'pnpm', 'bun']}>
+  <Tab value="npm">
+  ```bash
+  npx zuro-cli add validator
+  ```
+  </Tab>
+  <Tab value="pnpm">
+  ```bash
+  pnpm dlx zuro-cli add validator
+  ```
+  </Tab>
+  <Tab value="bun">
+  ```bash
+  bun x zuro-cli add validator
+  ```
+  </Tab>
+</Tabs>
+
+---
+
+## What Gets Created
+
+<Files>
+  <Folder name="src" defaultOpen>
+    <Folder name="middleware" defaultOpen>
+      <File name="validate.ts" />
+    </Folder>
+  </Folder>
+</Files>
+
+---
+
+## Generated File
+
+<Accordions type="single">
+  <Accordion title="middleware/validate.ts">
+    ```typescript
+    import { Request, Response, NextFunction } from "express";
+    import { ZodObject, ZodError } from "zod";
+
+    export const validate =
+        (schema: ZodObject) =>
+            async (req: Request, res: Response, next: NextFunction) => {
+                try {
+                    await schema.parseAsync({
+                        body: req.body,
+                        query: req.query,
+                        params: req.params,
+                    });
+                    return next();
+                } catch (error) {
+                    if (error instanceof ZodError) {
+                        return res.status(400).json({
+                            status: "error",
+                            message: "Validation failed",
+                            errors: error.issues.map((e) => ({
+                                path: e.path.join("."),
+                                message: e.message,
+                            })),
+                        });
+                    }
+                    return next(error);
+                }
+            };
+    ```
+  </Accordion>
+</Accordions>
+
+---
+
+## Usage
+
+<Steps>
+<Step>
+### Define Your Schema
+
+```typescript
+import { z } from "zod";
+
+const createUserSchema = z.object({
+    body: z.object({
+        name: z.string().min(2),
+        email: z.string().email(),
+    }),
+});
+```
+</Step>
+
+<Step>
+### Apply to Routes
+
+```typescript
+import { validate } from "./middleware/validate";
+
+router.post("/users", validate(createUserSchema), (req, res) => {
+    // req.body is typed as { name: string; email: string }
+    const { name, email } = req.body;
+    res.json({ message: `Created user ${name}` });
+});
+```
+</Step>
+</Steps>
+
+---
+
+## Schema Structure
+
+Validate any combination of request parts:
+
+```typescript
+const schema = z.object({
+    body: z.object({ ... }),    // req.body
+    query: z.object({ ... }),   // req.query
+    params: z.object({ ... }),  // req.params
+});
+```
+
+All fields are optional—validate only what you need.
+
+---
+
+## Error Response
+
+When validation fails, users get a clear response:
+
+```json
+{
+    "status": "error",
+    "message": "Validation failed",
+    "errors": [
+        { "path": "body.email", "message": "Invalid email" },
+        { "path": "body.name", "message": "String must contain at least 2 character(s)" }
+    ]
+}
+```
+
+---
+
+## Examples
+
+<Accordions type="multiple">
+  <Accordion title="Validate Body">
+    ```typescript
+    const createPostSchema = z.object({
+        body: z.object({
+            title: z.string().min(1).max(200),
+            content: z.string().optional(),
+            published: z.boolean().default(false),
+        }),
+    });
+
+    router.post("/posts", validate(createPostSchema), (req, res) => {
+        const { title, content, published } = req.body;
+        // All typed correctly
+    });
+    ```
+  </Accordion>
+
+  <Accordion title="Validate Query Params">
+    ```typescript
+    // GET /posts?page=1&limit=10
+    const listPostsSchema = z.object({
+        query: z.object({
+            page: z.coerce.number().min(1).default(1),
+            limit: z.coerce.number().min(1).max(100).default(20),
+        }),
+    });
+
+    router.get("/posts", validate(listPostsSchema), (req, res) => {
+        const { page, limit } = req.query;
+        // Both are typed as numbers
+    });
+    ```
+  </Accordion>
+
+  <Accordion title="Validate URL Params">
+    ```typescript
+    // GET /posts/:id
+    const getPostSchema = z.object({
+        params: z.object({
+            id: z.string().uuid(),
+        }),
+    });
+
+    router.get("/posts/:id", validate(getPostSchema), (req, res) => {
+        const { id } = req.params;
+        // id is typed as string, validated as UUID
+    });
+    ```
+  </Accordion>
+
+  <Accordion title="Combined Validation">
+    ```typescript
+    // PUT /posts/:id
+    const updatePostSchema = z.object({
+        params: z.object({
+            id: z.string().uuid(),
+        }),
+        body: z.object({
+            title: z.string().min(1).optional(),
+            content: z.string().optional(),
+        }),
+    });
+
+    router.put("/posts/:id", validate(updatePostSchema), (req, res) => {
+        const { id } = req.params;
+        const { title, content } = req.body;
+    });
+    ```
+  </Accordion>
+</Accordions>
+
+---
+
+## Works with Error Handler
+
+If you have the `error-handler` module, Zod errors are automatically caught and formatted:
+
+```bash
+npx zuro-cli add error-handler
+```
+
+The error handler catches `ZodError` and returns consistent JSON responses—no extra configuration needed.
+
+---
+
+## Common Zod Patterns
+
+<Tabs items={['Strings', 'Numbers', 'Arrays', 'Enums']}>
+  <Tab value="Strings">
+    ```typescript
+    z.string()
+    z.string().email()
+    z.string().url()
+    z.string().uuid()
+    z.string().min(1).max(100)
+    z.string().regex(/^[a-z]+$/)
+    ```
+  </Tab>
+  <Tab value="Numbers">
+    ```typescript
+    z.number()
+    z.number().int()
+    z.number().min(0).max(100)
+    z.coerce.number()  // Converts string to number
+    ```
+  </Tab>
+  <Tab value="Arrays">
+    ```typescript
+    z.array(z.string())
+    z.array(z.number()).min(1).max(10)
+    z.string().array()  // Same as above
+    ```
+  </Tab>
+  <Tab value="Enums">
+    ```typescript
+    z.enum(["draft", "published", "archived"])
+    z.nativeEnum(MyEnum)
+    ```
+  </Tab>
+</Tabs>
+
+---
+
+## Next Steps
+
+<div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+  <a href="/docs/error-handler" className="block border border-border rounded-xl p-5 bg-card hover:border-green-500/50 transition-colors no-underline">
+    <h3 className="font-bold text-foreground mb-1">→ Add Error Handler</h3>
+    <p className="text-sm text-muted-foreground">Centralized error handling for your API</p>
+  </a>
+
+  <a href="/docs/auth" className="block border border-border rounded-xl p-5 bg-card hover:border-green-500/50 transition-colors no-underline">
+    <h3 className="font-bold text-foreground mb-1">→ Add Auth</h3>
+    <p className="text-sm text-muted-foreground">User authentication with Better-Auth</p>
+  </a>
+</div>

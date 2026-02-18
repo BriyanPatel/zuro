@@ -46,6 +46,8 @@ apps/web/public/registry/express/
 
 # Keep the index.json though!
 !apps/web/public/registry/index.json
+apps/web/public/registry/*.tmp.*
+packages/templates/**/*.tmp.*
 
 # --- Database ---
 # Keep migrations (drizzle folder), but ignore local sqlite/db files if any

@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cat:*)",
+      "Bash(git -C /c/Users/BL0147/briyan/zuro log --oneline -10)",
+      "Bash(git -C /c/Users/BL0147/briyan/zuro status)",
+      "WebFetch(domain:fumadocs.vercel.app)",
+      "WebFetch(domain:fumadocs.dev)",
+      "Bash(ls:*)"
+    ]
+  }
+}

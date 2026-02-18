@@ -30,6 +30,7 @@
                     "type": "config"
                 }
             ],
+            "moduleDependencies": [],
             "dependencies": [
                 "express",
                 "cors",
@@ -57,27 +58,24 @@
                     "type": "library"
                 },
                 {
-                    "path": "express/db/pg/schema.ts",
-                    "target": "db/schema.ts",
-                    "type": "library"
-                },
-                {
                     "path": "express/db/pg/drizzle.config.ts",
                     "target": "../drizzle.config.ts",
                     "type": "config"
                 },
                 {
-                    "path": "express/db/env.ts",
-                    "target": "env.ts",
+                    "path": "express/db/schema/index.ts",
+                    "target": "db/schema/index.ts",
                     "type": "library"
                 }
             ],
-            "dependencies": [
+            "moduleDependencies": [
                 "core"
             ],
-            "devDependencies": [
+            "dependencies": [
                 "drizzle-orm",
-                "pg",
+                "pg"
+            ],
+            "devDependencies": [
                 "drizzle-kit",
                 "@types/pg"
             ]
@@ -91,29 +89,101 @@
                     "type": "library"
                 },
                 {
-                    "path": "express/db/mysql/schema.ts",
-                    "target": "db/schema.ts",
-                    "type": "library"
-                },
-                {
                     "path": "express/db/mysql/drizzle.config.ts",
                     "target": "../drizzle.config.ts",
                     "type": "config"
                 },
                 {
-                    "path": "express/db/env.ts",
-                    "target": "env.ts",
+                    "path": "express/db/schema/index.ts",
+                    "target": "db/schema/index.ts",
                     "type": "library"
                 }
             ],
-            "dependencies": [
+            "moduleDependencies": [
                 "core"
             ],
-            "devDependencies": [
+            "dependencies": [
                 "drizzle-orm",
-                "mysql2",
+                "mysql2"
+            ],
+            "devDependencies": [
                 "drizzle-kit"
             ]
+        },
+        "validator": {
+            "type": "block",
+            "files": [
+                {
+                    "path": "express/middleware/validate.ts",
+                    "target": "middleware/validate.ts",
+                    "type": "library"
+                }
+            ],
+            "moduleDependencies": [],
+            "dependencies": [],
+            "devDependencies": [
+                "zod"
+            ]
+        },
+        "error-handler": {
+            "type": "block",
+            "files": [
+                {
+                    "path": "express/lib/errors.ts",
+                    "target": "lib/errors.ts",
+                    "type": "library"
+                },
+                {
+                    "path": "express/middleware/error-handler.ts",
+                    "target": "middleware/error-handler.ts",
+                    "type": "library"
+                }
+            ],
+            "moduleDependencies": [
+                "core"
+            ],
+            "dependencies": [],
+            "devDependencies": []
+        },
+        "auth": {
+            "type": "block",
+            "files": [
+                {
+                    "path": "express/lib/auth.ts",
+                    "target": "lib/auth.ts",
+                    "type": "library"
+                },
+                {
+                    "path": "express/routes/auth.routes.ts",
+                    "target": "routes/auth.routes.ts",
+                    "type": "library"
+                },
+                {
+                    "path": "express/controllers/user.controller.ts",
+                    "target": "controllers/user.controller.ts",
+                    "type": "library"
+                },
+                {
+                    "path": "express/routes/user.routes.ts",
+                    "target": "routes/user.routes.ts",
+                    "type": "library"
+                },
+                {
+                    "path": "express/db/schema/auth.ts",
+                    "target": "db/schema/auth.ts",
+                    "type": "library"
+                }
+            ],
+            "moduleDependencies": [
+                "core",
+                "database",
+                "validator",
+                "error-handler"
+            ],
+            "dependencies": [
+                "better-auth"
+            ],
+            "devDependencies": []
         }
     }
 }
