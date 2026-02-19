@@ -27,10 +27,9 @@ function SidebarFooter() {
 export default function Layout({ children }: { children: ReactNode }) {
   const docsContainerStyle = {
     "--fd-sidebar-width": "228px",
-    "--fd-layout-width": "90rem",
     gridTemplate: `"sidebar header toc"
       "sidebar toc-popover toc"
-      "sidebar main toc" 1fr / var(--fd-sidebar-col) minmax(0, calc(var(--fd-layout-width,97rem) - var(--fd-sidebar-width) - var(--fd-toc-width))) minmax(0, 1fr)`,
+      "sidebar main toc" 1fr / var(--fd-sidebar-col) minmax(0, 1fr) minmax(0, var(--fd-toc-width))`,
   } as CSSProperties;
 
   return (
