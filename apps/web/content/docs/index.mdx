@@ -96,7 +96,7 @@ Build your actual features. We handle the infrastructure.
 </Tabs>
 
 <Callout type="info">
-**One command, full stack:** Running `zuro add auth` automatically installs database, validator, and error-handler if they're missing. No need to remember the order!
+**One command, full stack:** Running `zuro-cli add auth` automatically installs database, validator, and error-handler if they're missing. No need to remember the order!
 </Callout>
 
 ---
@@ -105,11 +105,11 @@ Build your actual features. We handle the infrastructure.
 
 | Module | Command | What You Get |
 |--------|---------|--------------|
-| **Core** | `zuro init` | Express, TypeScript, Helmet, CORS, Pino logger |
-| **Database** | `zuro add database` | Drizzle ORM, PostgreSQL or MySQL |
-| **Auth** | `zuro add auth` | Better-Auth, signup/login, sessions |
-| **Validator** | `zuro add validator` | Zod middleware for request validation |
-| **Error Handler** | `zuro add error-handler` | Custom error classes, consistent responses |
+| **Core** | `zuro-cli init` | Express, TypeScript, Helmet, CORS, Pino logger |
+| **Database** | `zuro-cli add database` | Drizzle ORM, PostgreSQL or MySQL |
+| **Auth** | `zuro-cli add auth` | Better-Auth, signup/login, sessions |
+| **Validator** | `zuro-cli add validator` | Zod middleware for request validation |
+| **Error Handler** | `zuro-cli add error-handler` | Custom error classes, consistent responses |
 
 ---
 
@@ -156,7 +156,7 @@ Everything uses battle-tested libraries:
 
 ## Project Structure
 
-After `zuro init` + adding modules:
+After `zuro-cli init` + adding modules:
 
 <Files>
   <Folder name="src" defaultOpen>

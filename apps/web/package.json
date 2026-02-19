@@ -6,10 +6,7 @@
         "dev": "next dev",
         "build": "next build",
         "start": "next start",
-        "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
-        "sync-templates": "corepack pnpm --filter @zuro/templates build",
-        "predev": "corepack pnpm --filter @zuro/templates build",
-        "prebuild": "corepack pnpm --filter @zuro/templates build"
+        "lint": "eslint . --ext .js,.jsx,.ts,.tsx"
     },
     "dependencies": {
         "@tailwindcss/postcss": "^4.0.0",

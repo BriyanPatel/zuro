@@ -222,19 +222,13 @@ curl http://localhost:3000/health
 
 ---
 
-## Using With Existing Projects
+## Safety Check
 
-Already have a project? Run init in your directory:
+If this directory already contains a non-Zuro project, `init` stops before writing files.
 
-```bash
-cd existing-project
-npx zuro-cli init
-```
-
-Zuro will:
-- Detect your package manager
-- Add only utility files
-- Install missing dependencies
+Use `zuro-cli init` in:
+- a fresh/empty directory, or
+- an existing project already managed by Zuro CLI.
 
 ---
 

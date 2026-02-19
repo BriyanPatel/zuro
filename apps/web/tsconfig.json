@@ -36,7 +36,6 @@
         ".source/**/*.ts"
     ],
     "exclude": [
-        "node_modules",
-        "public/registry"
+        "node_modules"
     ]
 }

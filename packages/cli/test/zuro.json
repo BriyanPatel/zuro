@@ -1,0 +1,5 @@
+{
+  "name": "test",
+  "pm": "npm",
+  "srcDir": "src"
+}

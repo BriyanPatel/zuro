@@ -18,15 +18,47 @@ export async function initPackageJson(cwd: string, force: boolean = false) {
     }
 }
 
-export async function installDependencies(pm: string, deps: string[], cwd: string) {
-    if (deps.length === 0) return;
+interface InstallOptions {
+    dev?: boolean;
+}
 
-    const installCmd = pm === "npm" ? "install" : "add";
-    // For devDependencies in this context, we might want to just install them as regular deps for simplicity 
-    // or differentiate. The prompt asked to install dependencies.
-    // Assuming these are runtime deps or dev deps based on the registry definition.
-    // The registry definition has "devDependencies".
+export async function installDependencies(
+    pm: string,
+    deps: string[],
+    cwd: string,
+    options: InstallOptions = {}
+) {
+    const uniqueDeps = [...new Set(deps)].filter(Boolean);
 
-    // Let's just install them.
-    await execa(pm, [installCmd, ...deps], { cwd });
+    if (uniqueDeps.length === 0) {
+        return;
+    }
+
+    const isDev = options.dev ?? false;
+
+    if (pm === "npm") {
+        const args = ["install", ...(isDev ? ["--save-dev"] : []), ...uniqueDeps];
+        await execa("npm", args, { cwd });
+        return;
+    }
+
+    if (pm === "pnpm") {
+        const args = ["add", ...(isDev ? ["-D"] : []), ...uniqueDeps];
+        await execa("pnpm", args, { cwd });
+        return;
+    }
+
+    if (pm === "yarn") {
+        const args = ["add", ...(isDev ? ["-D"] : []), ...uniqueDeps];
+        await execa("yarn", args, { cwd });
+        return;
+    }
+
+    if (pm === "bun") {
+        const args = ["add", ...(isDev ? ["-d"] : []), ...uniqueDeps];
+        await execa("bun", args, { cwd });
+        return;
+    }
+
+    throw new Error(`Unsupported package manager: ${pm}`);
 }

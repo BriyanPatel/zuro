@@ -3,7 +3,7 @@
     "version": "0.0.1",
     "description": "The backend builder for busy developers.",
     "bin": {
-        "zuro": "./dist/index.js"
+        "zuro-cli": "./dist/index.js"
     },
     "files": [
         "dist"

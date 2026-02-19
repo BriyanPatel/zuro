@@ -3,7 +3,10 @@
     "version": "0.0.1",
     "private": true,
     "scripts": {
-        "build": "find express -name \"*.tmp.*\" -delete && rm -rf ../../apps/web/public/registry/express && copyfiles -u 0 \"express/**/*\" ../../apps/web/public/registry"
+        "build": "node ./scripts/build-registry.mjs",
+        "build:registry": "node ./scripts/build-registry.mjs",
+        "serve:registry": "node ./scripts/serve-registry.mjs",
+        "dev:registry": "node ./scripts/build-registry.mjs && node ./scripts/serve-registry.mjs"
     },
     "dependencies": {
         "express": "^4.19.2",

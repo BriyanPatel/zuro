@@ -4,19 +4,7 @@ const withMDX = createMDX();
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-    reactStrictMode: true,
-    // CRITICAL: Allow the CLI to fetch JSON from /registry
-    async headers() {
-        return [
-            {
-                source: "/registry/:path*",
-                headers: [
-                    { key: "Access-Control-Allow-Origin", value: "*" },
-                    { key: "Access-Control-Allow-Methods", value: "GET" }
-                ]
-            }
-        ]
-    }
+    reactStrictMode: true
 };
 
 export default withMDX(nextConfig);

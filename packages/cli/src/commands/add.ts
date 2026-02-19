@@ -2,11 +2,24 @@ import prompts from "prompts";
 import ora from "ora";
 import path from "path";
 import fs from "fs-extra";
-import { fetchRegistry, fetchFile } from "../utils/registry";
+import { fetchRegistry, fetchFile, RegistryFile } from "../utils/registry";
 import { installDependencies } from "../utils/pm";
 import { resolveDependencies } from "../utils/dependency";
 import { updateEnvFile, updateEnvSchema, ENV_CONFIGS } from "../utils/env-manager";
 import chalk from "chalk";
+import { readZuroConfig } from "../utils/config";
+import { showNonZuroProjectMessage } from "../utils/project-guard";
+
+function resolveSafeTargetPath(projectRoot: string, srcDir: string, file: RegistryFile) {
+    const targetPath = path.resolve(projectRoot, srcDir, file.target);
+    const normalizedRoot = path.resolve(projectRoot);
+
+    if (targetPath !== normalizedRoot && !targetPath.startsWith(`${normalizedRoot}${path.sep}`)) {
+        throw new Error(`Refusing to write outside project directory: ${file.target}`);
+    }
+
+    return targetPath;
+}
 
 /**
  * Modifies app.ts to include error handler middleware
@@ -20,14 +33,12 @@ async function injectErrorHandler(projectRoot: string, srcDir: string): Promise<
 
     let content = await fs.readFile(appPath, "utf-8");
 
-    // Check if already injected
-    if (content.includes('errorHandler')) {
+    if (content.includes("errorHandler")) {
         return true;
     }
 
     const errorImport = `import { errorHandler, notFoundHandler } from "./middleware/error-handler";`;
 
-    // Find the last import statement and add after it
     const importRegex = /^import .+ from .+;?\s*$/gm;
     let lastImportIndex = 0;
     let match;
@@ -40,7 +51,6 @@ async function injectErrorHandler(projectRoot: string, srcDir: string): Promise<
         content = content.slice(0, lastImportIndex) + `\n${errorImport}` + content.slice(lastImportIndex);
     }
 
-    // Add error handlers before "export default app"
     const errorSetup = `\n// Error handling (must be last)\napp.use(notFoundHandler);\napp.use(errorHandler);\n`;
     const exportMatch = content.match(/export default app;?\s*$/m);
     if (exportMatch && exportMatch.index !== undefined) {
@@ -63,8 +73,7 @@ async function injectAuthRoutes(projectRoot: string, srcDir: string): Promise<bo
 
     let content = await fs.readFile(appPath, "utf-8");
 
-    // Check if already injected
-    if (content.includes('routes/auth.routes')) {
+    if (content.includes("routes/auth.routes")) {
         return true;
     }
 
@@ -72,7 +81,6 @@ async function injectAuthRoutes(projectRoot: string, srcDir: string): Promise<bo
     const userImport = `import userRoutes from "./routes/user.routes";`;
     const routeSetup = `\n// Auth routes\napp.use(authRoutes);\napp.use("/api/users", userRoutes);\n`;
 
-    // Find the last import statement and add after it
     const importRegex = /^import .+ from .+;?\s*$/gm;
     let lastImportIndex = 0;
     let match;
@@ -85,7 +93,6 @@ async function injectAuthRoutes(projectRoot: string, srcDir: string): Promise<bo
         content = content.slice(0, lastImportIndex) + `\n${authImport}\n${userImport}` + content.slice(lastImportIndex);
     }
 
-    // Add route setup before "export default app"
     const exportMatch = content.match(/export default app;?\s*$/m);
     if (exportMatch && exportMatch.index !== undefined) {
         content = content.slice(0, exportMatch.index) + routeSetup + "\n" + content.slice(exportMatch.index);
@@ -96,19 +103,16 @@ async function injectAuthRoutes(projectRoot: string, srcDir: string): Promise<bo
 }
 
 export const add = async (moduleName: string) => {
-    // 1. READ ZURO CONFIG
-    const configPath = path.join(process.cwd(), "zuro.json");
-    let srcDir = "src";
-
-    if (fs.existsSync(configPath)) {
-        const config = await fs.readJson(configPath);
-        srcDir = config.srcDir || "src";
+    const projectRoot = process.cwd();
+    const projectConfig = await readZuroConfig(projectRoot);
+    if (!projectConfig) {
+        showNonZuroProjectMessage();
+        return;
     }
+    let srcDir = projectConfig.srcDir || "src";
 
-    // 2. Intercept "database" to ask for variant and connection URL
     let customDbUrl: string | undefined;
 
-    // Default localhost URLs (root user, no password)
     const DEFAULT_URLS = {
         "database-pg": "postgresql://root@localhost:5432/mydb",
         "database-mysql": "mysql://root@localhost:3306/mydb",
@@ -124,7 +128,11 @@ export const add = async (moduleName: string) => {
                 { title: "MySQL", value: "database-mysql" },
             ],
         });
-        if (!variantResponse.variant) process.exit(0);
+
+        if (!variantResponse.variant) {
+            process.exit(0);
+        }
+
         moduleName = variantResponse.variant;
 
         const defaultUrl = DEFAULT_URLS[moduleName as keyof typeof DEFAULT_URLS];
@@ -139,7 +147,6 @@ export const add = async (moduleName: string) => {
         customDbUrl = urlResponse.dbUrl?.trim() || defaultUrl;
     }
 
-    // Also ask for DB URL if adding database-pg or database-mysql directly
     if ((moduleName === "database-pg" || moduleName === "database-mysql") && customDbUrl === undefined) {
         const defaultUrl = DEFAULT_URLS[moduleName as keyof typeof DEFAULT_URLS];
         console.log(chalk.dim(`  Tip: Leave blank to use ${defaultUrl}\n`));
@@ -156,8 +163,8 @@ export const add = async (moduleName: string) => {
     const spinner = ora(`Checking registry for ${moduleName}...`).start();
 
     try {
-        const registry = await fetchRegistry();
-        const module = registry.modules[moduleName];
+        const registryContext = await fetchRegistry();
+        const module = registryContext.manifest.modules[moduleName];
 
         if (!module) {
             spinner.fail(`Module '${moduleName}' not found.`);
@@ -166,33 +173,35 @@ export const add = async (moduleName: string) => {
 
         spinner.succeed(`Found module: ${chalk.cyan(moduleName)}`);
 
-        // 3. RESOLVE ZURO MODULE DEPENDENCIES RECURSIVELY
         const moduleDeps = module.moduleDependencies || [];
-        await resolveDependencies(moduleDeps, process.cwd());
+        await resolveDependencies(moduleDeps, projectRoot);
 
-        // 4. INSTALL NPM DEPENDENCIES
         spinner.start("Installing dependencies...");
 
         let pm = "npm";
-        if (fs.existsSync("pnpm-lock.yaml")) pm = "pnpm";
-        if (fs.existsSync("bun.lockb")) pm = "bun";
-
-        const allDeps = [
-            ...(module.dependencies || []),
-            ...(module.devDependencies || [])
-        ];
-
-        if (allDeps.length > 0) {
-            await installDependencies(pm, allDeps, process.cwd());
+        if (fs.existsSync(path.join(projectRoot, "pnpm-lock.yaml"))) {
+            pm = "pnpm";
+        } else if (fs.existsSync(path.join(projectRoot, "bun.lockb"))) {
+            pm = "bun";
+        } else if (fs.existsSync(path.join(projectRoot, "yarn.lock"))) {
+            pm = "yarn";
         }
+
+        await installDependencies(pm, module.dependencies || [], projectRoot);
+        await installDependencies(pm, module.devDependencies || [], projectRoot, { dev: true });
+
         spinner.succeed("Dependencies installed");
 
-        // 5. SCAFFOLD FILES
         spinner.start("Scaffolding files...");
 
         for (const file of module.files) {
-            const content = await fetchFile(file.path);
-            const targetPath = path.join(process.cwd(), srcDir, file.target);
+            const content = await fetchFile(file.path, {
+                baseUrl: registryContext.fileBaseUrl,
+                expectedSha256: file.sha256,
+                expectedSize: file.size,
+            });
+
+            const targetPath = resolveSafeTargetPath(projectRoot, srcDir, file);
 
             await fs.ensureDir(path.dirname(targetPath));
             await fs.writeFile(targetPath, content);
@@ -200,10 +209,9 @@ export const add = async (moduleName: string) => {
 
         spinner.succeed("Files generated");
 
-        // 5.5. INJECT INTO APP.TS (if adding auth or error-handler)
         if (moduleName === "auth") {
             spinner.start("Configuring routes in app.ts...");
-            const injected = await injectAuthRoutes(process.cwd(), srcDir);
+            const injected = await injectAuthRoutes(projectRoot, srcDir);
             if (injected) {
                 spinner.succeed("Routes configured in app.ts");
             } else {
@@ -213,7 +221,7 @@ export const add = async (moduleName: string) => {
 
         if (moduleName === "error-handler") {
             spinner.start("Configuring error handler in app.ts...");
-            const injected = await injectErrorHandler(process.cwd(), srcDir);
+            const injected = await injectErrorHandler(projectRoot, srcDir);
             if (injected) {
                 spinner.succeed("Error handler configured in app.ts");
             } else {
@@ -221,51 +229,39 @@ export const add = async (moduleName: string) => {
             }
         }
 
-        // 6. UPDATE ENV FILES
         const envConfig = ENV_CONFIGS[moduleName as keyof typeof ENV_CONFIGS];
         if (envConfig) {
             spinner.start("Updating environment configuration...");
 
-            // Use custom DB URL if provided
             const envVars: Record<string, string> = { ...envConfig.envVars };
             if (customDbUrl && (moduleName === "database-pg" || moduleName === "database-mysql")) {
                 envVars.DATABASE_URL = customDbUrl;
             }
 
-            // Update .env file
-            await updateEnvFile(process.cwd(), envVars);
-
-            // Update env.ts schema
-            await updateEnvSchema(process.cwd(), srcDir, envConfig.schemaFields);
+            await updateEnvFile(projectRoot, envVars);
+            await updateEnvSchema(projectRoot, srcDir, envConfig.schemaFields);
 
             spinner.succeed("Environment configured");
         }
 
-        // 7. SHOW SUCCESS AND NEXT STEPS
         console.log(chalk.green(`\n✔ ${moduleName} added successfully!\n`));
 
         if (moduleName === "auth") {
             console.log(chalk.bold("📋 Next Steps:\n"));
-
-            // Environment note
             console.log(chalk.yellow("1. Update your .env file:"));
-            console.log(chalk.dim("   We added placeholder values. Update BETTER_AUTH_SECRET with a secure key.\n"));
-
-            // Database migrations
+            console.log(
+                chalk.dim("   We added placeholder values. Update BETTER_AUTH_SECRET with a secure key.\n")
+            );
             console.log(chalk.yellow("2. Run database migrations:"));
-            console.log(chalk.cyan(`   npx drizzle-kit generate`));
-            console.log(chalk.cyan(`   npx drizzle-kit migrate\n`));
-
-            // Available endpoints
+            console.log(chalk.cyan("   npx drizzle-kit generate"));
+            console.log(chalk.cyan("   npx drizzle-kit migrate\n"));
             console.log(chalk.yellow("3. Available endpoints:"));
             console.log(chalk.dim("   POST /auth/sign-up/email  - Register"));
             console.log(chalk.dim("   POST /auth/sign-in/email  - Login"));
             console.log(chalk.dim("   POST /auth/sign-out       - Logout"));
             console.log(chalk.dim("   GET  /api/users/me        - Current user\n"));
-
         } else if (moduleName === "error-handler") {
             console.log(chalk.bold("📋 Usage:\n"));
-
             console.log(chalk.yellow("Throw errors in your controllers:"));
             console.log(chalk.dim("   ─────────────────────────────────────"));
             console.log(chalk.white(`   import { UnauthorizedError, NotFoundError } from "./lib/errors";`));
@@ -273,7 +269,6 @@ export const add = async (moduleName: string) => {
             console.log(chalk.white(`   throw new UnauthorizedError("Invalid credentials");`));
             console.log(chalk.white(`   throw new NotFoundError("User not found");`));
             console.log(chalk.dim("   ─────────────────────────────────────\n"));
-
             console.log(chalk.yellow("Available error classes:"));
             console.log(chalk.dim("   BadRequestError     (400)"));
             console.log(chalk.dim("   UnauthorizedError   (401)"));
@@ -282,24 +277,23 @@ export const add = async (moduleName: string) => {
             console.log(chalk.dim("   ConflictError       (409)"));
             console.log(chalk.dim("   ValidationError     (422)"));
             console.log(chalk.dim("   InternalServerError (500)\n"));
-
             console.log(chalk.yellow("Wrap async handlers:"));
             console.log(chalk.dim("   ─────────────────────────────────────"));
             console.log(chalk.white(`   import { asyncHandler } from "./middleware/error-handler";`));
             console.log("");
             console.log(chalk.white(`   router.get("/users", asyncHandler(async (req, res) => {`));
-            console.log(chalk.white(`       // errors auto-caught`));
-            console.log(chalk.white(`   }));`));
+            console.log(chalk.white("       // errors auto-caught"));
+            console.log(chalk.white("   }));"));
             console.log(chalk.dim("   ─────────────────────────────────────\n"));
-
         } else if (moduleName.includes("database")) {
             console.log(chalk.bold("📋 Next Steps:\n"));
-
             let stepNum = 1;
 
             if (!customDbUrl) {
                 console.log(chalk.yellow(`${stepNum}. Update DATABASE_URL in .env:`));
-                console.log(chalk.dim("   We added a placeholder. Update with your actual database credentials.\n"));
+                console.log(
+                    chalk.dim("   We added a placeholder. Update with your actual database credentials.\n")
+                );
                 stepNum++;
             }
 
@@ -311,7 +305,6 @@ export const add = async (moduleName: string) => {
             console.log(chalk.cyan("   npx drizzle-kit generate"));
             console.log(chalk.cyan("   npx drizzle-kit migrate\n"));
         }
-
     } catch (error) {
         spinner.fail(`Failed to add module: ${(error as Error).message}`);
     }

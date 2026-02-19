@@ -40,13 +40,6 @@ Thumbs.db
 *.swo
 
 # --- Zuro Specific ---
-# Ignore the generated registry files in the web app
-# (Because they are built from packages/templates)
-apps/web/public/registry/express/
-
-# Keep the index.json though!
-!apps/web/public/registry/index.json
-apps/web/public/registry/*.tmp.*
 packages/templates/**/*.tmp.*
 
 # --- Database ---
