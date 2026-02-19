@@ -17,7 +17,6 @@ import {
   Terminal,
   Code2,
   Zap,
-  Github,
   Clock,
   FolderTree,
   FileCode2,
@@ -222,14 +221,6 @@ export function ProfessionalLanding() {
           </Link>
           <nav className="zl-nav">
             <Link href="/docs" className="zl-nav-link">Docs</Link>
-            <a
-              href="https://github.com/BriyanPatel/zuro"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="zl-nav-link"
-            >
-              GitHub
-            </a>
             <Link href="/docs/init" className="zl-cta-btn">
               Get Started
               <ArrowRight className="h-3.5 w-3.5" />
@@ -830,15 +821,10 @@ export function ProfessionalLanding() {
               Get Started Now
               <ArrowRight className="h-4 w-4" />
             </Link>
-            <a
-              href="https://github.com/BriyanPatel/zuro"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="zl-btn zl-btn-ghost"
-            >
-              <Github className="h-4 w-4" />
-              Star on GitHub
-            </a>
+            <Link href="/docs" className="zl-btn zl-btn-ghost">
+              <BookOpen className="h-4 w-4" />
+              Read Docs
+            </Link>
           </div>
         </motion.section>
 
@@ -850,9 +836,7 @@ export function ProfessionalLanding() {
             </span>
             <div className="zl-footer-links">
               <Link href="/docs">Docs</Link>
-              <a href="https://github.com/BriyanPatel/zuro" target="_blank" rel="noopener noreferrer">
-                GitHub
-              </a>
+              <Link href="/docs/init">Quick Start</Link>
             </div>
           </div>
           <p className="zl-footer-copy">

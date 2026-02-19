@@ -204,16 +204,14 @@ export const Roadmap: React.FC = () => {
                     viewport={{ once: true }}
                     className="mt-16 text-center"
                 >
-                    <p className="text-zinc-500 mb-4">Have a module idea?</p>
-                    <a
-                        href="https://github.com/BriyanPatel/zuro/issues"
-                        target="_blank"
-                        rel="noopener noreferrer"
+                    <p className="text-zinc-500 mb-4">Want to see what ships next?</p>
+                    <Link
+                        href="/docs"
                         className="inline-flex items-center gap-2 text-green-400 hover:text-green-300 font-medium transition-colors"
                     >
-                        Request a feature on GitHub
+                        Explore the docs
                         <ArrowRight className="w-4 h-4" />
-                    </a>
+                    </Link>
                 </motion.div>
             </div>
         </section>

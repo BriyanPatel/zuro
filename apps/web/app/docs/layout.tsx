@@ -36,12 +36,7 @@ export default function Layout({ children }: { children: ReactNode }) {
           text: "Website",
           url: "/",
         },
-        {
-          text: "GitHub",
-          url: "https://github.com/BriyanPatel/zuro",
-        },
       ]}
-      githubUrl="https://github.com/BriyanPatel/zuro"
       sidebar={{
         defaultOpenLevel: 1,
         footer: <SidebarFooter />,

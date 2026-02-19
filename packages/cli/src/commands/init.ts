@@ -4,7 +4,7 @@ import fs from "fs-extra";
 import path from "path";
 import prompts from "prompts";
 import { fetchRegistry, fetchFile, RegistryFile } from "../utils/registry";
-import { initPackageJson, installDependencies } from "../utils/pm";
+import { initPackageJson, installDependencies, ensurePackageManagerAvailable } from "../utils/pm";
 import { createInitialEnv } from "../utils/env-manager";
 import { readZuroConfig, writeZuroConfig } from "../utils/config";
 import { showNonZuroProjectMessage } from "../utils/project-guard";
@@ -23,6 +23,27 @@ function resolveSafeTargetPath(projectRoot: string, srcDir: string, file: Regist
         relativeTargetPath,
         targetPath,
     };
+}
+
+async function ensureSafeTargetDirectory(targetDir: string, cwd: string, projectName: string) {
+    await fs.ensureDir(targetDir);
+    const entries = await fs.readdir(targetDir);
+
+    if (entries.length === 0) {
+        return true;
+    }
+
+    const isCurrentFolder = targetDir === cwd;
+    const response = await prompts({
+        type: "confirm",
+        name: "proceed",
+        message: isCurrentFolder
+            ? `Current folder '${projectName}' is not empty. Continue anyway?`
+            : `Target folder '${projectName}' already exists and is not empty. Continue anyway?`,
+        initial: false,
+    });
+
+    return response.proceed === true;
 }
 
 export async function init() {
@@ -99,7 +120,12 @@ export async function init() {
         } else {
             projectName = response.path.trim();
             targetDir = path.resolve(cwd, projectName);
-            await fs.ensureDir(targetDir);
+        }
+
+        const isSafeTarget = await ensureSafeTargetDirectory(targetDir, cwd, projectName);
+        if (!isSafeTarget) {
+            console.log(chalk.red("Operation cancelled."));
+            return;
         }
     }
 
@@ -111,11 +137,15 @@ export async function init() {
         srcDir: srcDir || existingConfig?.srcDir || "src",
     };
 
-    await writeZuroConfig(targetDir, zuroConfig);
-
     const spinner = ora("Connecting to Zuro Registry...").start();
+    let currentStep = "package manager preflight";
 
     try {
+        spinner.text = `Checking ${pm} availability...`;
+        await ensurePackageManagerAvailable(pm);
+
+        currentStep = "registry fetch";
+        spinner.text = "Connecting to Zuro Registry...";
         const registryContext = await fetchRegistry();
 
         const coreModule = registryContext.manifest.modules.core;
@@ -125,13 +155,15 @@ export async function init() {
             return;
         }
 
+        currentStep = "project initialization";
         spinner.text = "Initializing project...";
 
         const hasPackageJson = await fs.pathExists(path.join(targetDir, "package.json"));
         if (!hasPackageJson) {
-            await initPackageJson(targetDir, true);
+            await initPackageJson(targetDir, true, projectName, srcDir);
         }
 
+        currentStep = "dependency installation";
         spinner.text = `Installing dependencies using ${pm}...`;
 
         let runtimeDeps: string[] = [];
@@ -150,6 +182,7 @@ export async function init() {
         await installDependencies(pm, runtimeDeps, targetDir);
         await installDependencies(pm, devDeps, targetDir, { dev: true });
 
+        currentStep = "module file generation";
         spinner.text = "Fetching core module files...";
 
         for (const file of coreModule.files) {
@@ -178,7 +211,11 @@ export async function init() {
             await fs.writeFile(targetPath, content);
         }
 
+        currentStep = "environment file setup";
         await createInitialEnv(targetDir);
+
+        currentStep = "config write";
+        await writeZuroConfig(targetDir, zuroConfig);
 
         spinner.succeed(chalk.green("Project initialized successfully!"));
 
@@ -189,7 +226,13 @@ export async function init() {
         console.log(chalk.cyan(`  ${pm} run dev`));
         console.log(`\n${chalk.dim("Add modules: zuro-cli add database, zuro-cli add auth")}`);
     } catch (error) {
-        spinner.fail(chalk.red("Failed to initialize project."));
-        console.error(error);
+        spinner.fail(chalk.red(`Failed during ${currentStep}.`));
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        console.error(chalk.red(errorMessage));
+        console.log(`\n${chalk.bold("Retry:")}`);
+        if (targetDir !== cwd) {
+            console.log(chalk.cyan(`  cd ${projectName}`));
+        }
+        console.log(chalk.cyan("  npx zuro-cli init"));
     }
 }

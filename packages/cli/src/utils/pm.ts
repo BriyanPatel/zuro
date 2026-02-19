@@ -2,15 +2,41 @@ import fs from "fs-extra";
 import path from "path";
 import { execa } from "execa";
 
-export async function initPackageJson(cwd: string, force: boolean = false) {
+function normalizePackageName(name: string) {
+    const normalized = name
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9._-]/g, "-")
+        .replace(/-+/g, "-")
+        .replace(/^[._-]+|[._-]+$/g, "");
+
+    return normalized || "zuro-app";
+}
+
+export async function ensurePackageManagerAvailable(pm: string) {
+    try {
+        await execa(pm, ["--version"], { stdio: "ignore" });
+    } catch {
+        throw new Error(
+            `Package manager '${pm}' is not installed or not available in PATH. Install it or choose npm.`
+        );
+    }
+}
+
+export async function initPackageJson(
+    cwd: string,
+    force: boolean = false,
+    packageName = "zuro-app",
+    srcDir = "src"
+) {
     const pkgPath = path.join(cwd, "package.json");
     if (force || !await fs.pathExists(pkgPath)) {
         await fs.writeJson(pkgPath, {
-            name: "zuro-app",
+            name: normalizePackageName(packageName),
             version: "0.0.1",
             private: true,
             scripts: {
-                "dev": "tsx watch src/server.ts",
+                "dev": `tsx watch ${srcDir}/server.ts`,
                 "build": "tsc",
                 "start": "node dist/server.js"
             }

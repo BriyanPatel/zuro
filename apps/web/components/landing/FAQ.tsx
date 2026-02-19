@@ -109,17 +109,7 @@ export const FAQ: React.FC = () => {
                     More questions? Check our{' '}
                     <a href="/docs" className="text-green-500 hover:text-green-400 transition-colors">
                         documentation
-                    </a>{' '}
-                    or{' '}
-                    <a
-                        href="https://github.com/BriyanPatel/zuro"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-green-500 hover:text-green-400 transition-colors"
-                    >
-                        open an issue
-                    </a>
-                    .
+                    </a>.
                 </motion.p>
             </div>
         </section>
