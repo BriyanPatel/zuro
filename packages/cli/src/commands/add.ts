@@ -190,6 +190,36 @@ async function isLikelyEmptyDirectory(cwd: string): Promise<boolean> {
     return entries.filter((entry) => !ignored.has(entry.toLowerCase())).length === 0;
 }
 
+async function ensureSchemaExport(projectRoot: string, srcDir: string, schemaFileName: string) {
+    const schemaIndexPath = path.join(projectRoot, srcDir, "db", "schema", "index.ts");
+    if (!await fs.pathExists(schemaIndexPath)) {
+        return;
+    }
+
+    const exportLine = `export * from "./${schemaFileName}";`;
+    const content = await fs.readFile(schemaIndexPath, "utf-8");
+    const normalized = content.replace(/\r\n/g, "\n");
+    const exportPattern = new RegExp(
+        `^\\s*export\\s*\\*\\s*from\\s*["']\\./${escapeRegex(schemaFileName)}["'];?\\s*$`,
+        "m"
+    );
+
+    if (exportPattern.test(normalized)) {
+        return;
+    }
+
+    let next = normalized
+        .replace(/^\s*export\s*\{\s*\};?\s*$/m, "")
+        .trimEnd();
+
+    if (next.length > 0) {
+        next += "\n\n";
+    }
+
+    next += `${exportLine}\n`;
+    await fs.writeFile(schemaIndexPath, next);
+}
+
 /**
  * Modifies app.ts to include error handler middleware
  */
@@ -490,6 +520,16 @@ export const add = async (moduleName: string) => {
 
             await fs.ensureDir(path.dirname(targetPath));
             await fs.writeFile(targetPath, content);
+        }
+
+        const schemaExports = module.files
+            .map((file) => file.target.replace(/\\/g, "/"))
+            .filter((target) => /^db\/schema\/[^/]+\.ts$/.test(target))
+            .map((target) => path.posix.basename(target, ".ts"))
+            .filter((name) => name !== "index");
+
+        for (const schemaFileName of schemaExports) {
+            await ensureSchemaExport(projectRoot, srcDir, schemaFileName);
         }
 
         spinner.succeed("Files generated");

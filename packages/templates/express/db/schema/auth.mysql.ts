@@ -3,6 +3,8 @@ import { mysqlTable, varchar, datetime, boolean, text, uniqueIndex } from "drizz
 export const user = mysqlTable("user", {
     id: varchar("id", { length: 255 }).primaryKey(),
     name: varchar("name", { length: 255 }).notNull(),
+    firstName: varchar("first_name", { length: 255 }),
+    lastName: varchar("last_name", { length: 255 }),
     email: varchar("email", { length: 320 }).notNull().unique(),
     emailVerified: boolean("email_verified").notNull(),
     image: text("image"),
