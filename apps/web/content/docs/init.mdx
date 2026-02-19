@@ -8,6 +8,7 @@ description: Create the core backend scaffold in 60 seconds
 Create a new Express.js + TypeScript project with security, logging, and environment validation pre-configured.
 
 `init` scaffolds the **core foundation only**. Add features like auth and database later with `zuro-cli add`.
+It can also set up Prettier for your generated project during the interactive flow.
 
 ---
 
@@ -69,6 +70,21 @@ If target folder already exists and is not empty, Zuro asks before continuing.
 </Step>
 
 <Step>
+### Optional Prettier Setup
+
+```
+? Setup Prettier? (recommended) ›
+❯ Yes
+  No
+```
+
+If you choose **Yes**, Zuro adds:
+- `prettier` as a dev dependency
+- `.prettierrc` and `.prettierignore`
+- `format` and `format:check` scripts in `package.json`
+</Step>
+
+<Step>
 ### Done
 
 ```bash
@@ -101,6 +117,8 @@ Server runs at `http://localhost:3000`.
   </Folder>
 </Files>
 
+> If you enable Prettier, `init` also creates `.prettierrc` and `.prettierignore`.
+
 ---
 
 ## What Init Includes
@@ -113,6 +131,7 @@ Server runs at `http://localhost:3000`.
 | **CORS** | cors | Cross-origin requests |
 | **Logging** | Pino | Fast JSON logging |
 | **Env Validation** | Zod | Type-safe environment variables |
+| **Formatting (Optional)** | Prettier | Consistent formatting via init prompt |
 
 ---
 
@@ -147,6 +166,13 @@ Health check:
 ```bash
 curl http://localhost:3000/health
 # {"status":"ok","timestamp":"<ISO timestamp>"}
+```
+
+If you enabled Prettier:
+
+```bash
+npm run format
+npm run format:check
 ```
 
 ---

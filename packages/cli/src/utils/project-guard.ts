@@ -9,3 +9,11 @@ export function showNonZuroProjectMessage() {
     console.log("- a fresh/empty directory, or");
     console.log("- an existing project already managed by Zuro CLI.");
 }
+
+export function showInitFirstMessage() {
+    console.log(chalk.yellow("No Zuro project found in this directory."));
+    console.log("");
+    console.log(chalk.yellow("Run init first, then add modules."));
+    console.log("");
+    console.log(chalk.cyan("npx zuro-cli init"));
+}

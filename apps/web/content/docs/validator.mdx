@@ -1,16 +1,11 @@
 ---
 title: Validator
-description: Validate request body/query/params with Zod
+description: Simple request validation with Zod
 ---
 
 # Validator
 
-Use validator to check request input with Zod before your route handler runs.
-
-It supports:
-- `body`
-- `query`
-- `params`
+Add a simple validation middleware for `body`, `query`, and `params`.
 
 ---
 
@@ -51,13 +46,13 @@ Runtime dependency installed:
 
 ---
 
-## Validator API
+## Middleware API
 
 ```ts
-validate(schema, options?)
+validate(schema)
 ```
 
-`schema` should validate this shape:
+Your schema should validate this shape:
 
 ```ts
 {
@@ -67,24 +62,13 @@ validate(schema, options?)
 }
 ```
 
-### Options
-
-| Option | Type | Default | Purpose |
-|--------|------|---------|---------|
-| `targets` | `("body" \| "query" \| "params")[]` | `["body","query","params"]` | Select which parts to validate |
-| `unknownKeys` | `"strip" \| "passthrough"` | `"strip"` | Remove unknown keys or keep them |
-| `statusCode` | `number` | `422` | Validation failure HTTP status |
-| `formatError` | `(error: ZodError) => ValidationErrorResponse` | built-in formatter | Customize error response JSON |
-
 ---
 
-## Important Behavior
+## Behavior
 
-- Parsed/coerced/defaulted values are written back to `req.body`, `req.query`, and `req.params`.
-- Non-Zod errors are passed to `next(error)`.
-- Validation errors return a structured JSON response.
-
-Default error response:
+1. Validates request input with Zod.
+2. Writes parsed values back to `req.body`, `req.query`, and `req.params`.
+3. Returns `422` on validation errors:
 
 ```json
 {
@@ -97,6 +81,8 @@ Default error response:
 }
 ```
 
+4. Passes non-Zod errors to `next(error)`.
+
 ---
 
 ## Basic Usage
@@ -104,7 +90,7 @@ Default error response:
 ```ts
 import { Router } from "express";
 import { z } from "zod";
-import { validate, type ValidatedRequest } from "./middleware/validate";
+import { validate } from "./middleware/validate";
 
 const router = Router();
 
@@ -115,14 +101,10 @@ const createUserSchema = z.object({
   }),
 });
 
-router.post(
-  "/users",
-  validate(createUserSchema),
-  (req: ValidatedRequest<typeof createUserSchema>, res) => {
-    const { name, email } = req.body;
-    res.json({ name, email });
-  }
-);
+router.post("/users", validate(createUserSchema), (req, res) => {
+  const { name, email } = req.body;
+  res.json({ name, email });
+});
 ```
 
 ---
@@ -140,73 +122,20 @@ const listPostsSchema = z.object({
   }),
 });
 
-router.get(
-  "/users/:userId/posts",
-  validate(listPostsSchema),
-  (req: ValidatedRequest<typeof listPostsSchema>, res) => {
-    const { page, limit } = req.query;
-    const { userId } = req.params;
-    res.json({ page, limit, userId });
-  }
-);
-```
-
----
-
-## Validate Specific Targets Only
-
-```ts
-const searchSchema = z.object({
-  query: z.object({
-    q: z.string().min(1),
-  }),
+router.get("/users/:userId/posts", validate(listPostsSchema), (req, res) => {
+  const { page, limit } = req.query;
+  const { userId } = req.params;
+  res.json({ page, limit, userId });
 });
-
-router.get(
-  "/search",
-  validate(searchSchema, { targets: ["query"] }),
-  (req: ValidatedRequest<typeof searchSchema>, res) => {
-    res.json({ q: req.query.q });
-  }
-);
-```
-
----
-
-## Custom Error Format
-
-```ts
-const schema = z.object({
-  body: z.object({
-    title: z.string().min(1),
-  }),
-});
-
-router.post(
-  "/posts",
-  validate(schema, {
-    statusCode: 400,
-    formatError: (error) => ({
-      status: "error",
-      code: "VALIDATION_ERROR",
-      message: "Invalid input",
-      errors: error.issues.map((issue) => ({
-        path: issue.path.join("."),
-        message: issue.message,
-      })),
-    }),
-  }),
-  (_req, res) => res.json({ ok: true })
-);
 ```
 
 ---
 
 ## Works with Error Handler
 
-Validator returns Zod validation responses directly by default.
+Validator returns validation responses directly by default.
 
-If another error happens inside middleware/handler, it still goes through `next(error)` and is handled by your error middleware:
+If anything else throws, it still goes to your error middleware:
 
 ```bash
 npx zuro-cli add error-handler

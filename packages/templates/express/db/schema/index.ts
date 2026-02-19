@@ -1,5 +1,3 @@
-// Export all schema files from this folder
-// Add your schema exports here as you create new tables
-
-// Example:
+// Export schema files from this folder, for example:
 // export * from "./users";
+export {};

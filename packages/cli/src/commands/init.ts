@@ -46,6 +46,36 @@ async function ensureSafeTargetDirectory(targetDir: string, cwd: string, project
     return response.proceed === true;
 }
 
+async function setupPrettier(targetDir: string) {
+    const prettierConfigPath = path.join(targetDir, ".prettierrc");
+    const prettierIgnorePath = path.join(targetDir, ".prettierignore");
+
+    if (!await fs.pathExists(prettierConfigPath)) {
+        const prettierConfig = {
+            semi: true,
+            singleQuote: false,
+            trailingComma: "es5",
+            printWidth: 100,
+            tabWidth: 2,
+        };
+        await fs.writeJson(prettierConfigPath, prettierConfig, { spaces: 2 });
+    }
+
+    if (!await fs.pathExists(prettierIgnorePath)) {
+        const ignoreContent = `node_modules
+dist
+build
+coverage
+.next
+pnpm-lock.yaml
+package-lock.json
+bun.lock
+bun.lockb
+`;
+        await fs.writeFile(prettierIgnorePath, ignoreContent);
+    }
+}
+
 export async function init() {
     const cwd = process.cwd();
     const isExistingProject = await fs.pathExists(path.join(cwd, "package.json"));
@@ -60,6 +90,7 @@ export async function init() {
     let pm = "npm";
     let srcDir = "src";
     let projectName = path.basename(cwd);
+    let enablePrettier = false;
 
     if (isExistingProject) {
         console.log(chalk.blue("ℹ Existing project detected."));
@@ -103,6 +134,12 @@ export async function init() {
                 ],
                 initial: 0,
             },
+            {
+                type: "confirm",
+                name: "prettier",
+                message: "Setup Prettier?",
+                initial: true,
+            },
         ]);
 
         if (response.pm === undefined) {
@@ -111,6 +148,7 @@ export async function init() {
         }
 
         pm = response.pm;
+        enablePrettier = response.prettier === true;
         srcDir = "src";
 
         if (!response.path || response.path.trim() === "") {
@@ -160,7 +198,7 @@ export async function init() {
 
         const hasPackageJson = await fs.pathExists(path.join(targetDir, "package.json"));
         if (!hasPackageJson) {
-            await initPackageJson(targetDir, true, projectName, srcDir);
+            await initPackageJson(targetDir, true, projectName, srcDir, { enablePrettier });
         }
 
         currentStep = "dependency installation";
@@ -181,6 +219,10 @@ export async function init() {
 
         await installDependencies(pm, runtimeDeps, targetDir);
         await installDependencies(pm, devDeps, targetDir, { dev: true });
+
+        if (enablePrettier) {
+            await installDependencies(pm, ["prettier"], targetDir, { dev: true });
+        }
 
         currentStep = "module file generation";
         spinner.text = "Fetching core module files...";
@@ -213,6 +255,11 @@ export async function init() {
 
         currentStep = "environment file setup";
         await createInitialEnv(targetDir);
+
+        if (enablePrettier) {
+            currentStep = "prettier setup";
+            await setupPrettier(targetDir);
+        }
 
         currentStep = "config write";
         await writeZuroConfig(targetDir, zuroConfig);

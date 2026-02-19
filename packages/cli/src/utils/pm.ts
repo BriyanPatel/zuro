@@ -27,19 +27,27 @@ export async function initPackageJson(
     cwd: string,
     force: boolean = false,
     packageName = "zuro-app",
-    srcDir = "src"
+    srcDir = "src",
+    options: { enablePrettier?: boolean } = {}
 ) {
     const pkgPath = path.join(cwd, "package.json");
     if (force || !await fs.pathExists(pkgPath)) {
+        const scripts: Record<string, string> = {
+            "dev": `tsx watch ${srcDir}/server.ts`,
+            "build": "tsc",
+            "start": "node dist/server.js"
+        };
+
+        if (options.enablePrettier) {
+            scripts["format"] = "prettier --write .";
+            scripts["format:check"] = "prettier --check .";
+        }
+
         await fs.writeJson(pkgPath, {
             name: normalizePackageName(packageName),
             version: "0.0.1",
             private: true,
-            scripts: {
-                "dev": `tsx watch ${srcDir}/server.ts`,
-                "build": "tsc",
-                "start": "node dist/server.js"
-            }
+            scripts
         }, { spaces: 2 });
     }
 }

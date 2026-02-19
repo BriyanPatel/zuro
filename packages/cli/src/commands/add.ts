@@ -9,7 +9,7 @@ import { resolveDependencies } from "../utils/dependency";
 import { updateEnvFile, updateEnvSchema, ENV_CONFIGS } from "../utils/env-manager";
 import chalk from "chalk";
 import { readZuroConfig } from "../utils/config";
-import { showNonZuroProjectMessage } from "../utils/project-guard";
+import { showNonZuroProjectMessage, showInitFirstMessage } from "../utils/project-guard";
 
 type DatabaseModuleName = "database-pg" | "database-mysql";
 
@@ -160,6 +160,14 @@ function getDatabaseSetupHint(moduleName: DatabaseModuleName, dbUrl: string) {
     }
 }
 
+function getModuleDocsPath(moduleName: string) {
+    if (isDatabaseModule(moduleName)) {
+        return "database";
+    }
+
+    return moduleName;
+}
+
 function escapeRegex(value: string) {
     return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
@@ -173,6 +181,13 @@ async function hasEnvVariable(projectRoot: string, key: string): Promise<boolean
     const content = await fs.readFile(envPath, "utf-8");
     const pattern = new RegExp(`^${escapeRegex(key)}=`, "m");
     return pattern.test(content);
+}
+
+async function isLikelyEmptyDirectory(cwd: string): Promise<boolean> {
+    const entries = await fs.readdir(cwd);
+    const ignored = new Set([".ds_store", "thumbs.db"]);
+
+    return entries.filter((entry) => !ignored.has(entry.toLowerCase())).length === 0;
 }
 
 /**
@@ -313,6 +328,11 @@ export const add = async (moduleName: string) => {
     const projectRoot = process.cwd();
     const projectConfig = await readZuroConfig(projectRoot);
     if (!projectConfig) {
+        if (await isLikelyEmptyDirectory(projectRoot)) {
+            showInitFirstMessage();
+            return;
+        }
+
         showNonZuroProjectMessage();
         return;
     }
@@ -526,74 +546,31 @@ export const add = async (moduleName: string) => {
             console.log(chalk.blue(`ℹ Backup created at: ${databaseBackupPath}\n`));
         }
 
-        if (resolvedModuleName === "auth") {
-            console.log(chalk.bold("📋 Next Steps:\n"));
-            if (generatedAuthSecret) {
-                console.log(chalk.yellow("1. BETTER_AUTH_SECRET generated automatically."));
-            } else {
-                console.log(chalk.yellow("1. Review your auth env values in .env."));
-            }
-            console.log(chalk.dim("   Make sure BETTER_AUTH_URL matches your API origin (for example http://localhost:3000).\n"));
-            console.log(chalk.yellow("2. Run database migrations:"));
-            console.log(chalk.cyan("   npx drizzle-kit generate"));
-            console.log(chalk.cyan("   npx drizzle-kit migrate\n"));
-            console.log(chalk.yellow("3. Available endpoints:"));
-            console.log(chalk.dim("   POST /auth/sign-up/email  - Register"));
-            console.log(chalk.dim("   POST /auth/sign-in/email  - Login"));
-            console.log(chalk.dim("   POST /auth/sign-out       - Logout"));
-            console.log(chalk.dim("   GET  /api/users/me        - Current user\n"));
-        } else if (resolvedModuleName === "error-handler") {
-            console.log(chalk.bold("📋 Usage:\n"));
-            console.log(chalk.yellow("Throw errors in your controllers:"));
-            console.log(chalk.dim("   ─────────────────────────────────────"));
-            console.log(chalk.white(`   import { UnauthorizedError, NotFoundError } from "./lib/errors";`));
-            console.log("");
-            console.log(chalk.white(`   throw new UnauthorizedError("Invalid credentials");`));
-            console.log(chalk.white(`   throw new NotFoundError("User not found");`));
-            console.log(chalk.dim("   ─────────────────────────────────────\n"));
-            console.log(chalk.yellow("Available error classes:"));
-            console.log(chalk.dim("   BadRequestError     (400)"));
-            console.log(chalk.dim("   UnauthorizedError   (401)"));
-            console.log(chalk.dim("   ForbiddenError      (403)"));
-            console.log(chalk.dim("   NotFoundError       (404)"));
-            console.log(chalk.dim("   ConflictError       (409)"));
-            console.log(chalk.dim("   ValidationError     (422)"));
-            console.log(chalk.dim("   InternalServerError (500)\n"));
-            console.log(chalk.yellow("Wrap async handlers:"));
-            console.log(chalk.dim("   ─────────────────────────────────────"));
-            console.log(chalk.white(`   import { asyncHandler } from "./middleware/error-handler";`));
-            console.log("");
-            console.log(chalk.white(`   router.get("/users", asyncHandler(async (req, res) => {`));
-            console.log(chalk.white("       // errors auto-caught"));
-            console.log(chalk.white("   }));"));
-            console.log(chalk.dim("   ─────────────────────────────────────\n"));
-        } else if (isDatabaseModule(resolvedModuleName)) {
-            console.log(chalk.bold("📋 Next Steps:\n"));
-            let stepNum = 1;
+        const docsPath = getModuleDocsPath(resolvedModuleName);
+        const docsUrl = `https://zuro-cli.devbybriyan.com/docs/${docsPath}`;
+        console.log(chalk.blue(`ℹ Docs: ${docsUrl}`));
 
+        if (isDatabaseModule(resolvedModuleName)) {
             if (usedDefaultDbUrl) {
-                console.log(chalk.yellow(`${stepNum}. Update DATABASE_URL in .env:`));
-                console.log(
-                    chalk.dim("   We added a local default. Update it if your DB host/user/password differ.\n")
-                );
-                stepNum++;
+                console.log(chalk.yellow("ℹ Review DATABASE_URL in .env if your local DB config differs."));
             }
-
-            console.log(chalk.yellow(`${stepNum}. Create schemas in ${srcDir}/db/schema/:`));
-            console.log(chalk.dim("   Add table files and export from index.ts\n"));
-            stepNum++;
 
             const setupHint = getDatabaseSetupHint(
                 resolvedModuleName,
                 customDbUrl || DEFAULT_DATABASE_URLS[resolvedModuleName]
             );
-            console.log(chalk.yellow(`${stepNum}. Ensure the database exists:`));
-            console.log(chalk.cyan(`   ${setupHint}\n`));
-            stepNum++;
+            console.log(chalk.yellow(`ℹ Ensure DB exists: ${setupHint}`));
+            console.log(chalk.yellow("ℹ Run migrations: npx drizzle-kit generate && npx drizzle-kit migrate"));
+        }
 
-            console.log(chalk.yellow(`${stepNum}. Run migrations:`));
-            console.log(chalk.cyan("   npx drizzle-kit generate"));
-            console.log(chalk.cyan("   npx drizzle-kit migrate\n"));
+        if (resolvedModuleName === "auth") {
+            if (generatedAuthSecret) {
+                console.log(chalk.yellow("ℹ BETTER_AUTH_SECRET was generated automatically."));
+            } else {
+                console.log(chalk.yellow("ℹ Review BETTER_AUTH_SECRET and BETTER_AUTH_URL in .env."));
+            }
+
+            console.log(chalk.yellow("ℹ Run migrations: npx drizzle-kit generate && npx drizzle-kit migrate"));
         }
     } catch (error) {
         spinner.fail(chalk.red(`Failed during ${currentStep}.`));

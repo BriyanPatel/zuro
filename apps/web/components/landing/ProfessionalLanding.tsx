@@ -249,8 +249,8 @@ export function ProfessionalLanding() {
             </motion.h1>
 
             <motion.p variants={fadeUp} className="zl-subline">
-              Production-ready Express + TypeScript in 60 seconds. Auth, database,
-              validation — one command each.{" "}
+              Core Express + TypeScript scaffold in 60 seconds. Then add auth,
+              database, and validation as modules. Optional Prettier setup is included in init.{" "}
               <span className="zl-subline-accent">Your code. Zero lock-in.</span>
             </motion.p>
 
@@ -283,7 +283,7 @@ export function ProfessionalLanding() {
 
             {/* trust */}
             <motion.div variants={fadeUp} className="zl-trust">
-              {["No hidden runtime", "Modular add-ons", "Team-ready structure"].map(
+              {["No hidden runtime", "Modular add-ons", "Optional Prettier setup"].map(
                 (t) => (
                   <span key={t} className="zl-trust-item">
                     <CheckCircle2 className="h-3.5 w-3.5" />
@@ -330,6 +330,7 @@ export function ProfessionalLanding() {
                   <p className="zl-t-green">✓ Security middleware (Helmet, CORS)</p>
                   <p className="zl-t-green">✓ Environment validation (Zod)</p>
                   <p className="zl-t-green">✓ Structured logging (Pino)</p>
+                  <p className="zl-t-green">✓ Optional Prettier setup</p>
                   <p className="zl-term-done">
                     <span className="zl-t-green">Done!</span>{" "}
                     <span className="zl-t-dim">Run:</span>{" "}
@@ -497,7 +498,7 @@ export function ProfessionalLanding() {
                 </div>
                 <div className="zl-compare-item zl-compare-item-done">
                   <span className="zl-compare-check">✓</span>
-                  <span>TypeScript + security + logging ready</span>
+                  <span>TypeScript + security + logging ready (+ optional Prettier)</span>
                 </div>
                 <div className="zl-compare-item zl-compare-item-done">
                   <span className="zl-compare-check">✓</span>
