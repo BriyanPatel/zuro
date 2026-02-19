@@ -339,9 +339,18 @@ async function injectAuthRoutes(projectRoot: string, srcDir: string): Promise<bo
         }
 
         const routeSetup = `\n// Auth routes\n${setupLines.join("\n")}\n`;
-        const exportMatch = content.match(/export default app;?\s*$/m);
-        if (exportMatch && exportMatch.index !== undefined) {
-            content = content.slice(0, exportMatch.index) + routeSetup + "\n" + content.slice(exportMatch.index);
+        const notFoundIndex = content.search(/^\s*app\.use\(\s*notFoundHandler\s*\);\s*$/m);
+        const errorHandlerIndex = content.search(/^\s*app\.use\(\s*errorHandler\s*\);\s*$/m);
+        const candidates = [notFoundIndex, errorHandlerIndex].filter((index) => index >= 0);
+        const insertionIndex = candidates.length > 0
+            ? Math.min(...candidates)
+            : (() => {
+                const exportMatch = content.match(/export default app;?\s*$/m);
+                return exportMatch?.index ?? -1;
+            })();
+
+        if (insertionIndex >= 0) {
+            content = content.slice(0, insertionIndex) + routeSetup + "\n" + content.slice(insertionIndex);
             modified = true;
             setupReady = true;
         }
