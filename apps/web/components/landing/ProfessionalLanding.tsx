@@ -253,8 +253,8 @@ export function ProfessionalLanding() {
             </motion.span>
 
             <motion.h1 variants={fadeUp} className="zl-headline">
-              Ship backends,{" "}
-              <span className="zl-gradient-text">not boilerplate.</span>
+              Build and ship backends,{" "}
+              <span className="zl-gradient-text">minus the setup.</span>
             </motion.h1>
 
             <motion.p variants={fadeUp} className="zl-subline">

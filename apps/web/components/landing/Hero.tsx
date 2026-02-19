@@ -64,9 +64,9 @@ export const Hero: React.FC = () => {
           className="text-center mb-6"
         >
           <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold tracking-[-0.02em] leading-[1.1]">
-            <span className="text-white">Build backends</span>
+            <span className="text-white">Build and ship backends,</span>
             <br />
-            <span className="gradient-text glow-text">not boilerplate</span>
+            <span className="gradient-text glow-text">minus the setup.</span>
           </h1>
         </motion.div>
 

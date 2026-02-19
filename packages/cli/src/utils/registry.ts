@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 
-const DEFAULT_REGISTRY_BASE_URL = "https://registry.zuro.dev";
+const DEFAULT_REGISTRY_BASE_URL = "https://zuro-cli.devbybriyan.com/registry";
 const DEFAULT_REGISTRY_ENTRY_URL = `${DEFAULT_REGISTRY_BASE_URL}/channels/stable.json`;
 const REGISTRY_ENV_VAR = "ZURO_REGISTRY_URL";
 const REQUEST_TIMEOUT_MS = 8000;
