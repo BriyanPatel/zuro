@@ -2,13 +2,27 @@ import prompts from "prompts";
 import ora from "ora";
 import path from "path";
 import fs from "fs-extra";
+import { randomBytes } from "node:crypto";
 import { fetchRegistry, fetchFile, RegistryFile } from "../utils/registry";
-import { installDependencies } from "../utils/pm";
+import { installDependencies, ensurePackageManagerAvailable } from "../utils/pm";
 import { resolveDependencies } from "../utils/dependency";
 import { updateEnvFile, updateEnvSchema, ENV_CONFIGS } from "../utils/env-manager";
 import chalk from "chalk";
 import { readZuroConfig } from "../utils/config";
 import { showNonZuroProjectMessage } from "../utils/project-guard";
+
+type DatabaseModuleName = "database-pg" | "database-mysql";
+
+export interface AddCommandOptions {
+    dialect?: string;
+    dbUrl?: string;
+    yes?: boolean;
+}
+
+const DEFAULT_DATABASE_URLS: Record<DatabaseModuleName, string> = {
+    "database-pg": "postgresql://postgres@localhost:5432/mydb",
+    "database-mysql": "mysql://root@localhost:3306/mydb",
+};
 
 function resolveSafeTargetPath(projectRoot: string, srcDir: string, file: RegistryFile) {
     const targetPath = path.resolve(projectRoot, srcDir, file.target);
@@ -19,6 +33,146 @@ function resolveSafeTargetPath(projectRoot: string, srcDir: string, file: Regist
     }
 
     return targetPath;
+}
+
+function resolvePackageManager(projectRoot: string) {
+    if (fs.existsSync(path.join(projectRoot, "pnpm-lock.yaml"))) {
+        return "pnpm";
+    }
+
+    if (fs.existsSync(path.join(projectRoot, "bun.lockb")) || fs.existsSync(path.join(projectRoot, "bun.lock"))) {
+        return "bun";
+    }
+
+    if (fs.existsSync(path.join(projectRoot, "yarn.lock"))) {
+        return "yarn";
+    }
+
+    return "npm";
+}
+
+function parseDatabaseDialect(value?: string): DatabaseModuleName | null {
+    const normalized = value?.trim().toLowerCase();
+    if (!normalized) {
+        return null;
+    }
+
+    if (normalized === "pg" || normalized === "postgres" || normalized === "postgresql" || normalized === "database-pg") {
+        return "database-pg";
+    }
+
+    if (normalized === "mysql" || normalized === "database-mysql") {
+        return "database-mysql";
+    }
+
+    return null;
+}
+
+function isDatabaseModule(moduleName: string): moduleName is DatabaseModuleName {
+    return moduleName === "database-pg" || moduleName === "database-mysql";
+}
+
+function validateDatabaseUrl(rawUrl: string, moduleName: DatabaseModuleName) {
+    const dbUrl = rawUrl.trim();
+    if (!dbUrl) {
+        throw new Error("Database URL cannot be empty.");
+    }
+
+    let parsed: URL;
+    try {
+        parsed = new URL(dbUrl);
+    } catch {
+        throw new Error(`Invalid database URL: '${dbUrl}'.`);
+    }
+
+    const protocol = parsed.protocol.toLowerCase();
+    if (moduleName === "database-pg" && protocol !== "postgresql:" && protocol !== "postgres:") {
+        throw new Error("PostgreSQL URL must start with postgres:// or postgresql://");
+    }
+
+    if (moduleName === "database-mysql" && protocol !== "mysql:") {
+        throw new Error("MySQL URL must start with mysql://");
+    }
+
+    return dbUrl;
+}
+
+async function detectInstalledDatabaseDialect(projectRoot: string, srcDir: string): Promise<DatabaseModuleName | null> {
+    const dbIndexPath = path.join(projectRoot, srcDir, "db", "index.ts");
+    if (!fs.existsSync(dbIndexPath)) {
+        return null;
+    }
+
+    const content = await fs.readFile(dbIndexPath, "utf-8");
+    if (content.includes("drizzle-orm/node-postgres") || content.includes(`from "pg"`)) {
+        return "database-pg";
+    }
+
+    if (content.includes("drizzle-orm/mysql2") || content.includes(`from "mysql2`)) {
+        return "database-mysql";
+    }
+
+    return null;
+}
+
+async function backupDatabaseFiles(projectRoot: string, srcDir: string): Promise<string | null> {
+    const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+    const backupRoot = path.join(projectRoot, ".zuro", "backups", `database-${timestamp}`);
+    const candidates = [
+        path.join(projectRoot, srcDir, "db", "index.ts"),
+        path.join(projectRoot, "drizzle.config.ts"),
+    ];
+
+    let copied = false;
+    for (const filePath of candidates) {
+        if (!fs.existsSync(filePath)) {
+            continue;
+        }
+
+        const relativePath = path.relative(projectRoot, filePath);
+        const backupPath = path.join(backupRoot, relativePath);
+        await fs.ensureDir(path.dirname(backupPath));
+        await fs.copyFile(filePath, backupPath);
+        copied = true;
+    }
+
+    return copied ? backupRoot : null;
+}
+
+function databaseLabel(moduleName: DatabaseModuleName) {
+    return moduleName === "database-pg" ? "PostgreSQL" : "MySQL";
+}
+
+function getDatabaseSetupHint(moduleName: DatabaseModuleName, dbUrl: string) {
+    try {
+        const parsed = new URL(dbUrl);
+        const dbName = parsed.pathname.replace(/^\/+/, "") || "mydb";
+
+        if (moduleName === "database-pg") {
+            return `createdb ${dbName}`;
+        }
+
+        return `mysql -e "CREATE DATABASE IF NOT EXISTS ${dbName};"`;
+    } catch {
+        return moduleName === "database-pg"
+            ? "createdb <database_name>"
+            : `mysql -e "CREATE DATABASE IF NOT EXISTS <database_name>;"`;
+    }
+}
+
+function escapeRegex(value: string) {
+    return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+async function hasEnvVariable(projectRoot: string, key: string): Promise<boolean> {
+    const envPath = path.join(projectRoot, ".env");
+    if (!await fs.pathExists(envPath)) {
+        return false;
+    }
+
+    const content = await fs.readFile(envPath, "utf-8");
+    const pattern = new RegExp(`^${escapeRegex(key)}=`, "m");
+    return pattern.test(content);
 }
 
 /**
@@ -33,32 +187,54 @@ async function injectErrorHandler(projectRoot: string, srcDir: string): Promise<
 
     let content = await fs.readFile(appPath, "utf-8");
 
-    if (content.includes("errorHandler")) {
-        return true;
-    }
-
     const errorImport = `import { errorHandler, notFoundHandler } from "./middleware/error-handler";`;
+    const hasErrorImport = content.includes(errorImport);
+    const hasNotFoundUse = /app\.use\(\s*notFoundHandler\s*\)/.test(content);
+    const hasErrorUse = /app\.use\(\s*errorHandler\s*\)/.test(content);
+    let modified = false;
+    let importInserted = hasErrorImport;
 
-    const importRegex = /^import .+ from .+;?\s*$/gm;
-    let lastImportIndex = 0;
-    let match;
+    if (!hasErrorImport) {
+        const importRegex = /^import .+ from .+;?\s*$/gm;
+        let lastImportIndex = 0;
+        let match;
 
-    while ((match = importRegex.exec(content)) !== null) {
-        lastImportIndex = match.index + match[0].length;
+        while ((match = importRegex.exec(content)) !== null) {
+            lastImportIndex = match.index + match[0].length;
+        }
+
+        if (lastImportIndex > 0) {
+            content = content.slice(0, lastImportIndex) + `\n${errorImport}` + content.slice(lastImportIndex);
+            modified = true;
+            importInserted = true;
+        }
     }
 
-    if (lastImportIndex > 0) {
-        content = content.slice(0, lastImportIndex) + `\n${errorImport}` + content.slice(lastImportIndex);
+    let setupInserted = hasNotFoundUse && hasErrorUse;
+    if (!setupInserted) {
+        const setupLines: string[] = [];
+        if (!hasNotFoundUse) {
+            setupLines.push("app.use(notFoundHandler);");
+        }
+
+        if (!hasErrorUse) {
+            setupLines.push("app.use(errorHandler);");
+        }
+
+        const errorSetup = `\n// Error handling (must be last)\n${setupLines.join("\n")}\n`;
+        const exportMatch = content.match(/export default app;?\s*$/m);
+        if (exportMatch && exportMatch.index !== undefined) {
+            content = content.slice(0, exportMatch.index) + errorSetup + "\n" + content.slice(exportMatch.index);
+            modified = true;
+            setupInserted = true;
+        }
     }
 
-    const errorSetup = `\n// Error handling (must be last)\napp.use(notFoundHandler);\napp.use(errorHandler);\n`;
-    const exportMatch = content.match(/export default app;?\s*$/m);
-    if (exportMatch && exportMatch.index !== undefined) {
-        content = content.slice(0, exportMatch.index) + errorSetup + "\n" + content.slice(exportMatch.index);
+    if (modified) {
+        await fs.writeFile(appPath, content);
     }
 
-    await fs.writeFile(appPath, content);
-    return true;
+    return importInserted && setupInserted;
 }
 
 /**
@@ -72,34 +248,65 @@ async function injectAuthRoutes(projectRoot: string, srcDir: string): Promise<bo
     }
 
     let content = await fs.readFile(appPath, "utf-8");
-
-    if (content.includes("routes/auth.routes")) {
-        return true;
-    }
-
     const authImport = `import authRoutes from "./routes/auth.routes";`;
     const userImport = `import userRoutes from "./routes/user.routes";`;
-    const routeSetup = `\n// Auth routes\napp.use(authRoutes);\napp.use("/api/users", userRoutes);\n`;
+    const hasAuthImport = content.includes(authImport);
+    const hasUserImport = content.includes(userImport);
+    const hasAuthRoute = /app\.use\(\s*authRoutes\s*\)/.test(content);
+    const hasUserRoute = /app\.use\(\s*["']\/api\/users["']\s*,\s*userRoutes\s*\)/.test(content);
+    let modified = false;
+    let importsReady = hasAuthImport && hasUserImport;
 
-    const importRegex = /^import .+ from .+;?\s*$/gm;
-    let lastImportIndex = 0;
-    let match;
+    if (!importsReady) {
+        const importRegex = /^import .+ from .+;?\s*$/gm;
+        let lastImportIndex = 0;
+        let match;
 
-    while ((match = importRegex.exec(content)) !== null) {
-        lastImportIndex = match.index + match[0].length;
+        while ((match = importRegex.exec(content)) !== null) {
+            lastImportIndex = match.index + match[0].length;
+        }
+
+        if (lastImportIndex > 0) {
+            const missingImports: string[] = [];
+            if (!hasAuthImport) {
+                missingImports.push(authImport);
+            }
+
+            if (!hasUserImport) {
+                missingImports.push(userImport);
+            }
+
+            content = content.slice(0, lastImportIndex) + `\n${missingImports.join("\n")}` + content.slice(lastImportIndex);
+            modified = true;
+            importsReady = true;
+        }
     }
 
-    if (lastImportIndex > 0) {
-        content = content.slice(0, lastImportIndex) + `\n${authImport}\n${userImport}` + content.slice(lastImportIndex);
+    let setupReady = hasAuthRoute && hasUserRoute;
+    if (!setupReady) {
+        const setupLines: string[] = [];
+        if (!hasAuthRoute) {
+            setupLines.push("app.use(authRoutes);");
+        }
+
+        if (!hasUserRoute) {
+            setupLines.push('app.use("/api/users", userRoutes);');
+        }
+
+        const routeSetup = `\n// Auth routes\n${setupLines.join("\n")}\n`;
+        const exportMatch = content.match(/export default app;?\s*$/m);
+        if (exportMatch && exportMatch.index !== undefined) {
+            content = content.slice(0, exportMatch.index) + routeSetup + "\n" + content.slice(exportMatch.index);
+            modified = true;
+            setupReady = true;
+        }
     }
 
-    const exportMatch = content.match(/export default app;?\s*$/m);
-    if (exportMatch && exportMatch.index !== undefined) {
-        content = content.slice(0, exportMatch.index) + routeSetup + "\n" + content.slice(exportMatch.index);
+    if (modified) {
+        await fs.writeFile(appPath, content);
     }
 
-    await fs.writeFile(appPath, content);
-    return true;
+    return importsReady && setupReady;
 }
 
 export const add = async (moduleName: string) => {
@@ -109,16 +316,20 @@ export const add = async (moduleName: string) => {
         showNonZuroProjectMessage();
         return;
     }
-    let srcDir = projectConfig.srcDir || "src";
+    const srcDir = projectConfig.srcDir || "src";
+    let resolvedModuleName = moduleName;
+    const parsedDialect = parseDatabaseDialect(moduleName);
+    if (parsedDialect) {
+        resolvedModuleName = parsedDialect;
+    }
 
     let customDbUrl: string | undefined;
+    let usedDefaultDbUrl = false;
+    let databaseBackupPath: string | null = null;
+    let generatedAuthSecret = false;
+    let authDatabaseDialect: DatabaseModuleName | null = null;
 
-    const DEFAULT_URLS = {
-        "database-pg": "postgresql://root@localhost:5432/mydb",
-        "database-mysql": "mysql://root@localhost:3306/mydb",
-    };
-
-    if (moduleName === "database") {
+    if (resolvedModuleName === "database") {
         const variantResponse = await prompts({
             type: "select",
             name: "variant",
@@ -130,25 +341,44 @@ export const add = async (moduleName: string) => {
         });
 
         if (!variantResponse.variant) {
-            process.exit(0);
+            console.log(chalk.yellow("Operation cancelled."));
+            return;
         }
 
-        moduleName = variantResponse.variant;
-
-        const defaultUrl = DEFAULT_URLS[moduleName as keyof typeof DEFAULT_URLS];
-        console.log(chalk.dim(`  Tip: Leave blank to use ${defaultUrl}\n`));
-
-        const urlResponse = await prompts({
-            type: "text",
-            name: "dbUrl",
-            message: "Database URL",
-            initial: "",
-        });
-        customDbUrl = urlResponse.dbUrl?.trim() || defaultUrl;
+        resolvedModuleName = variantResponse.variant;
     }
 
-    if ((moduleName === "database-pg" || moduleName === "database-mysql") && customDbUrl === undefined) {
-        const defaultUrl = DEFAULT_URLS[moduleName as keyof typeof DEFAULT_URLS];
+    if (isDatabaseModule(resolvedModuleName)) {
+        const installedDialect = await detectInstalledDatabaseDialect(projectRoot, srcDir);
+
+        if (installedDialect && installedDialect !== resolvedModuleName) {
+            console.log(
+                chalk.yellow(
+                    `\n⚠ Existing database setup detected: ${databaseLabel(installedDialect)}.`
+                )
+            );
+            console.log(
+                chalk.yellow(
+                    `  Switching to ${databaseLabel(resolvedModuleName)} will overwrite db files and drizzle config.\n`
+                )
+            );
+
+            const switchResponse = await prompts({
+                type: "confirm",
+                name: "proceed",
+                message: "Continue and switch database dialect?",
+                initial: false,
+            });
+
+            if (!switchResponse.proceed) {
+                console.log(chalk.yellow("Operation cancelled."));
+                return;
+            }
+
+            databaseBackupPath = await backupDatabaseFiles(projectRoot, srcDir);
+        }
+
+        const defaultUrl = DEFAULT_DATABASE_URLS[resolvedModuleName];
         console.log(chalk.dim(`  Tip: Leave blank to use ${defaultUrl}\n`));
 
         const response = await prompts({
@@ -157,49 +387,84 @@ export const add = async (moduleName: string) => {
             message: "Database URL",
             initial: "",
         });
-        customDbUrl = response.dbUrl?.trim() || defaultUrl;
-    }
 
-    const spinner = ora(`Checking registry for ${moduleName}...`).start();
-
-    try {
-        const registryContext = await fetchRegistry();
-        const module = registryContext.manifest.modules[moduleName];
-
-        if (!module) {
-            spinner.fail(`Module '${moduleName}' not found.`);
+        if (response.dbUrl === undefined) {
+            console.log(chalk.yellow("Operation cancelled."));
             return;
         }
 
-        spinner.succeed(`Found module: ${chalk.cyan(moduleName)}`);
+        const enteredUrl = response.dbUrl?.trim() || "";
+        usedDefaultDbUrl = enteredUrl.length === 0;
+        customDbUrl = validateDatabaseUrl(enteredUrl || defaultUrl, resolvedModuleName);
+    }
+
+    const pm = resolvePackageManager(projectRoot);
+    const spinner = ora(`Checking registry for ${resolvedModuleName}...`).start();
+    let currentStep = "package manager preflight";
+
+    try {
+        spinner.text = `Checking ${pm} availability...`;
+        await ensurePackageManagerAvailable(pm);
+
+        currentStep = "registry fetch";
+        spinner.text = `Checking registry for ${resolvedModuleName}...`;
+        const registryContext = await fetchRegistry();
+        const module = registryContext.manifest.modules[resolvedModuleName];
+
+        if (!module) {
+            spinner.fail(`Module '${resolvedModuleName}' not found.`);
+            return;
+        }
+
+        spinner.succeed(`Found module: ${chalk.cyan(resolvedModuleName)}`);
 
         const moduleDeps = module.moduleDependencies || [];
+        currentStep = "module dependency resolution";
         await resolveDependencies(moduleDeps, projectRoot);
 
+        currentStep = "dependency installation";
         spinner.start("Installing dependencies...");
-
-        let pm = "npm";
-        if (fs.existsSync(path.join(projectRoot, "pnpm-lock.yaml"))) {
-            pm = "pnpm";
-        } else if (fs.existsSync(path.join(projectRoot, "bun.lockb"))) {
-            pm = "bun";
-        } else if (fs.existsSync(path.join(projectRoot, "yarn.lock"))) {
-            pm = "yarn";
-        }
 
         await installDependencies(pm, module.dependencies || [], projectRoot);
         await installDependencies(pm, module.devDependencies || [], projectRoot, { dev: true });
 
         spinner.succeed("Dependencies installed");
 
+        currentStep = "module scaffolding";
         spinner.start("Scaffolding files...");
 
+        if (resolvedModuleName === "auth") {
+            authDatabaseDialect = await detectInstalledDatabaseDialect(projectRoot, srcDir);
+        }
+
         for (const file of module.files) {
-            const content = await fetchFile(file.path, {
+            let fetchPath = file.path;
+            let expectedSha256 = file.sha256;
+            let expectedSize = file.size;
+
+            if (
+                resolvedModuleName === "auth"
+                && file.target === "db/schema/auth.ts"
+                && authDatabaseDialect === "database-mysql"
+            ) {
+                fetchPath = "express/db/schema/auth.mysql.ts";
+                expectedSha256 = undefined;
+                expectedSize = undefined;
+            }
+
+            let content = await fetchFile(fetchPath, {
                 baseUrl: registryContext.fileBaseUrl,
-                expectedSha256: file.sha256,
-                expectedSize: file.size,
+                expectedSha256,
+                expectedSize,
             });
+
+            if (isDatabaseModule(resolvedModuleName) && file.target === "../drizzle.config.ts") {
+                const normalizedSrcDir = srcDir.replace(/\\/g, "/");
+                content = content.replace(
+                    /schema:\s*["'][^"']+["']/,
+                    `schema: "./${normalizedSrcDir}/db/schema/*"`
+                );
+            }
 
             const targetPath = resolveSafeTargetPath(projectRoot, srcDir, file);
 
@@ -209,7 +474,7 @@ export const add = async (moduleName: string) => {
 
         spinner.succeed("Files generated");
 
-        if (moduleName === "auth") {
+        if (resolvedModuleName === "auth") {
             spinner.start("Configuring routes in app.ts...");
             const injected = await injectAuthRoutes(projectRoot, srcDir);
             if (injected) {
@@ -219,7 +484,7 @@ export const add = async (moduleName: string) => {
             }
         }
 
-        if (moduleName === "error-handler") {
+        if (resolvedModuleName === "error-handler") {
             spinner.start("Configuring error handler in app.ts...");
             const injected = await injectErrorHandler(projectRoot, srcDir);
             if (injected) {
@@ -229,29 +494,46 @@ export const add = async (moduleName: string) => {
             }
         }
 
-        const envConfig = ENV_CONFIGS[moduleName as keyof typeof ENV_CONFIGS];
+        const envConfig = ENV_CONFIGS[resolvedModuleName as keyof typeof ENV_CONFIGS];
         if (envConfig) {
+            currentStep = "environment configuration";
             spinner.start("Updating environment configuration...");
 
             const envVars: Record<string, string> = { ...envConfig.envVars };
-            if (customDbUrl && (moduleName === "database-pg" || moduleName === "database-mysql")) {
+            if (customDbUrl && isDatabaseModule(resolvedModuleName)) {
                 envVars.DATABASE_URL = customDbUrl;
             }
 
-            await updateEnvFile(projectRoot, envVars);
+            if (resolvedModuleName === "auth") {
+                const hasExistingSecret = await hasEnvVariable(projectRoot, "BETTER_AUTH_SECRET");
+                if (!hasExistingSecret) {
+                    envVars.BETTER_AUTH_SECRET = randomBytes(32).toString("hex");
+                    generatedAuthSecret = true;
+                }
+            }
+
+            await updateEnvFile(projectRoot, envVars, true, {
+                overwriteExisting: isDatabaseModule(resolvedModuleName),
+            });
             await updateEnvSchema(projectRoot, srcDir, envConfig.schemaFields);
 
             spinner.succeed("Environment configured");
         }
 
-        console.log(chalk.green(`\n✔ ${moduleName} added successfully!\n`));
+        console.log(chalk.green(`\n✔ ${resolvedModuleName} added successfully!\n`));
 
-        if (moduleName === "auth") {
+        if (databaseBackupPath) {
+            console.log(chalk.blue(`ℹ Backup created at: ${databaseBackupPath}\n`));
+        }
+
+        if (resolvedModuleName === "auth") {
             console.log(chalk.bold("📋 Next Steps:\n"));
-            console.log(chalk.yellow("1. Update your .env file:"));
-            console.log(
-                chalk.dim("   We added placeholder values. Update BETTER_AUTH_SECRET with a secure key.\n")
-            );
+            if (generatedAuthSecret) {
+                console.log(chalk.yellow("1. BETTER_AUTH_SECRET generated automatically."));
+            } else {
+                console.log(chalk.yellow("1. Review your auth env values in .env."));
+            }
+            console.log(chalk.dim("   Make sure BETTER_AUTH_URL matches your API origin (for example http://localhost:3000).\n"));
             console.log(chalk.yellow("2. Run database migrations:"));
             console.log(chalk.cyan("   npx drizzle-kit generate"));
             console.log(chalk.cyan("   npx drizzle-kit migrate\n"));
@@ -260,7 +542,7 @@ export const add = async (moduleName: string) => {
             console.log(chalk.dim("   POST /auth/sign-in/email  - Login"));
             console.log(chalk.dim("   POST /auth/sign-out       - Logout"));
             console.log(chalk.dim("   GET  /api/users/me        - Current user\n"));
-        } else if (moduleName === "error-handler") {
+        } else if (resolvedModuleName === "error-handler") {
             console.log(chalk.bold("📋 Usage:\n"));
             console.log(chalk.yellow("Throw errors in your controllers:"));
             console.log(chalk.dim("   ─────────────────────────────────────"));
@@ -285,20 +567,28 @@ export const add = async (moduleName: string) => {
             console.log(chalk.white("       // errors auto-caught"));
             console.log(chalk.white("   }));"));
             console.log(chalk.dim("   ─────────────────────────────────────\n"));
-        } else if (moduleName.includes("database")) {
+        } else if (isDatabaseModule(resolvedModuleName)) {
             console.log(chalk.bold("📋 Next Steps:\n"));
             let stepNum = 1;
 
-            if (!customDbUrl) {
+            if (usedDefaultDbUrl) {
                 console.log(chalk.yellow(`${stepNum}. Update DATABASE_URL in .env:`));
                 console.log(
-                    chalk.dim("   We added a placeholder. Update with your actual database credentials.\n")
+                    chalk.dim("   We added a local default. Update it if your DB host/user/password differ.\n")
                 );
                 stepNum++;
             }
 
-            console.log(chalk.yellow(`${stepNum}. Create schemas in src/db/schema/:`));
+            console.log(chalk.yellow(`${stepNum}. Create schemas in ${srcDir}/db/schema/:`));
             console.log(chalk.dim("   Add table files and export from index.ts\n"));
+            stepNum++;
+
+            const setupHint = getDatabaseSetupHint(
+                resolvedModuleName,
+                customDbUrl || DEFAULT_DATABASE_URLS[resolvedModuleName]
+            );
+            console.log(chalk.yellow(`${stepNum}. Ensure the database exists:`));
+            console.log(chalk.cyan(`   ${setupHint}\n`));
             stepNum++;
 
             console.log(chalk.yellow(`${stepNum}. Run migrations:`));
@@ -306,6 +596,10 @@ export const add = async (moduleName: string) => {
             console.log(chalk.cyan("   npx drizzle-kit migrate\n"));
         }
     } catch (error) {
-        spinner.fail(`Failed to add module: ${(error as Error).message}`);
+        spinner.fail(chalk.red(`Failed during ${currentStep}.`));
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        console.error(chalk.red(errorMessage));
+        console.log(`\n${chalk.bold("Retry:")}`);
+        console.log(chalk.cyan(`  npx zuro-cli add ${resolvedModuleName}`));
     }
 };

@@ -8,9 +8,11 @@ import os from "os";
 export const updateEnvFile = async (
     cwd: string,
     variables: Record<string, string>,
-    createIfMissing = true
+    createIfMissing = true,
+    options: { overwriteExisting?: boolean } = {}
 ) => {
     const envPath = path.join(cwd, ".env");
+    const overwriteExisting = options.overwriteExisting ?? false;
 
     let content = "";
     if (fs.existsSync(envPath)) {
@@ -22,16 +24,29 @@ export const updateEnvFile = async (
     let modified = false;
 
     for (const [key, value] of Object.entries(variables)) {
-        // Check if key already exists
-        const regex = new RegExp(`^${key}=`, "m");
-        if (!regex.test(content)) {
-            // Add newline if content doesn't end with one
-            if (content && !content.endsWith("\n")) {
-                content += os.EOL;
+        const escapedKey = key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        const regex = new RegExp(`^${escapedKey}=.*$`, "m");
+
+        if (regex.test(content)) {
+            if (!overwriteExisting) {
+                continue;
             }
-            content += `${key}=${value}${os.EOL}`;
-            modified = true;
+
+            const nextLine = `${key}=${value}`;
+            const updated = content.replace(regex, nextLine);
+            if (updated !== content) {
+                content = updated;
+                modified = true;
+            }
+            continue;
         }
+
+        // Add newline if content doesn't end with one
+        if (content && !content.endsWith("\n")) {
+            content += os.EOL;
+        }
+        content += `${key}=${value}${os.EOL}`;
+        modified = true;
     }
 
     if (modified || !fs.existsSync(envPath)) {

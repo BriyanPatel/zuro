@@ -5,8 +5,8 @@
         "init",
         "---Modules---",
         "database",
-        "auth",
         "validator",
-        "error-handler"
+        "error-handler",
+        "auth"
     ]
 }

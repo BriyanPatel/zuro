@@ -120,10 +120,10 @@
         }
       ],
       "moduleDependencies": [],
-      "dependencies": [],
-      "devDependencies": [
+      "dependencies": [
         "zod"
-      ]
+      ],
+      "devDependencies": []
     },
     "error-handler": {
       "type": "block",
@@ -177,7 +177,6 @@
       "moduleDependencies": [
         "core",
         "database",
-        "validator",
         "error-handler"
       ],
       "dependencies": [

@@ -11,19 +11,17 @@ Built for:
 
 ## Quick Start
 
-Use the beta release:
-
 ```bash
-npx zuro-cli@beta init
+npx zuro-cli init
 ```
 
 Add modules:
 
 ```bash
-npx zuro-cli@beta add database
-npx zuro-cli@beta add auth
-npx zuro-cli@beta add validator
-npx zuro-cli@beta add error-handler
+npx zuro-cli add database
+npx zuro-cli add auth
+npx zuro-cli add validator
+npx zuro-cli add error-handler
 ```
 
 ## Documentation

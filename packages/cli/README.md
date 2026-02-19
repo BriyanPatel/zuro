@@ -1,40 +1,44 @@
 # zuro-cli
 
-The backend builder for busy developers.
+A CLI for scaffolding backend foundations and modules in your project.
 
-## Usage
+## init
 
-```bash
-npx zuro-cli@beta init
-```
+Use the `init` command to create a production-ready Express + TypeScript backend foundation.
 
-Add modules:
+The `init` command installs core dependencies, creates base files, and prepares your project for module-based backend development.
 
 ```bash
-npx zuro-cli@beta add database
-npx zuro-cli@beta add auth
+npx zuro-cli init
 ```
 
-## Docs
+## add
 
-- https://zuro-cli.devbybriyan.com/docs
+Use the `add` command to add modules to your project.
 
-## Registry
-
-Default registry:
-
-- https://registry.devbybriyan.com/channels/stable.json
-
-Override for local testing:
+The `add` command scaffolds module files, installs required dependencies, and updates relevant project setup.
 
 ```bash
-export ZURO_REGISTRY_URL=http://127.0.0.1:8787
+npx zuro-cli add [module]
 ```
 
-## Development
+Example:
 
 ```bash
-corepack pnpm install
-corepack pnpm --filter zuro-cli build
-corepack pnpm --filter zuro-cli lint
+npx zuro-cli add auth
 ```
+
+Available modules include:
+
+- `database`
+- `auth`
+- `validator`
+- `error-handler`
+
+## Documentation
+
+Visit https://zuro-cli.devbybriyan.com/docs to view the documentation.
+
+## License
+
+Licensed under the MIT license.

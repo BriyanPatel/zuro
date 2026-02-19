@@ -5,13 +5,17 @@ description: Backend in 60 seconds. Ship your idea.
 
 # Welcome to Zuro
 
-**Stop wasting time on Express boilerplate.** One command gives you a production-ready backend with TypeScript, auth, database, and validation. Perfect for hackathons, side projects, learning, or bootstrapping your next startup.
+**Stop wasting time on Express boilerplate.** `init` gives you the production-ready core (Express + TypeScript + security + logging + env validation). Then use `add` to install modules like auth, database, and validator when you need them.
 
 ```bash
 npx zuro-cli init
 ```
 
-That's it. You're ready to build.
+Then add modules for your use case:
+
+```bash
+npx zuro-cli add auth
+```
 
 ---
 
@@ -35,7 +39,7 @@ Creates Express + TypeScript project with security, logging, and env validation.
 npx zuro-cli add auth
 ```
 
-Add features when you need them. Dependencies are auto-installed—running `add auth` also sets up database, validator, and error-handler.
+Add features when you need them. Dependencies are auto-installed—running `add auth` also sets up database and error-handler.
 </Step>
 
 <Step>
@@ -60,7 +64,7 @@ Build your actual features. We handle the infrastructure.
     npx zuro-cli init my-app
     cd my-app
 
-    # Add auth (auto-installs database, validator, error-handler)
+    # Add auth (auto-installs database, error-handler)
     npx zuro-cli add auth
 
     # Run
@@ -73,7 +77,7 @@ Build your actual features. We handle the infrastructure.
     pnpm dlx zuro-cli init my-app
     cd my-app
 
-    # Add auth (auto-installs database, validator, error-handler)
+    # Add auth (auto-installs database, error-handler)
     pnpm dlx zuro-cli add auth
 
     # Run
@@ -86,7 +90,7 @@ Build your actual features. We handle the infrastructure.
     bun x zuro-cli init my-app
     cd my-app
 
-    # Add auth (auto-installs database, validator, error-handler)
+    # Add auth (auto-installs database, error-handler)
     bun x zuro-cli add auth
 
     # Run
@@ -96,7 +100,7 @@ Build your actual features. We handle the infrastructure.
 </Tabs>
 
 <Callout type="info">
-**One command, full stack:** Running `zuro-cli add auth` automatically installs database, validator, and error-handler if they're missing. No need to remember the order!
+**One command, full stack:** Running `zuro-cli add auth` automatically installs database and error-handler if they're missing. No need to remember the order!
 </Callout>
 
 ---
