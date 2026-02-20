@@ -286,28 +286,97 @@ async function injectErrorHandler(projectRoot: string, srcDir: string): Promise<
  * Modifies app.ts to include auth routes
  */
 async function injectAuthRoutes(projectRoot: string, srcDir: string): Promise<boolean> {
-    const appPath = path.join(projectRoot, srcDir, "app.ts");
+    const routeIndexPath = path.join(projectRoot, srcDir, "routes", "index.ts");
+    if (await fs.pathExists(routeIndexPath)) {
+        let content = await fs.readFile(routeIndexPath, "utf-8");
+        const authImport = `import authRoutes from "./auth.routes";`;
+        const userImport = `import userRoutes from "./user.routes";`;
 
-    if (!fs.existsSync(appPath)) {
+        const hasAuthImport = content.includes(authImport);
+        const hasUserImport = content.includes(userImport);
+        const hasAuthRoute = /rootRouter\.use\(\s*["']\/auth["']\s*,\s*authRoutes\s*\)/.test(content);
+        const hasUserRoute = /rootRouter\.use\(\s*["']\/users["']\s*,\s*userRoutes\s*\)/.test(content);
+
+        let modified = false;
+        let importsReady = hasAuthImport && hasUserImport;
+
+        if (!importsReady) {
+            const importRegex = /^import .+ from .+;?\s*$/gm;
+            let lastImportIndex = 0;
+            let match;
+
+            while ((match = importRegex.exec(content)) !== null) {
+                lastImportIndex = match.index + match[0].length;
+            }
+
+            if (lastImportIndex > 0) {
+                const missingImports: string[] = [];
+                if (!hasAuthImport) {
+                    missingImports.push(authImport);
+                }
+
+                if (!hasUserImport) {
+                    missingImports.push(userImport);
+                }
+
+                content = content.slice(0, lastImportIndex) + `\n${missingImports.join("\n")}` + content.slice(lastImportIndex);
+                modified = true;
+                importsReady = true;
+            }
+        }
+
+        let setupReady = hasAuthRoute && hasUserRoute;
+        if (!setupReady) {
+            const setupLines: string[] = [];
+            if (!hasAuthRoute) {
+                setupLines.push('rootRouter.use("/auth", authRoutes);');
+            }
+
+            if (!hasUserRoute) {
+                setupLines.push('rootRouter.use("/users", userRoutes);');
+            }
+
+            const routeSetup = `\n// Auth routes\n${setupLines.join("\n")}\n`;
+            const exportMatch = content.match(/export default rootRouter;?\s*$/m);
+
+            if (exportMatch && exportMatch.index !== undefined) {
+                content = content.slice(0, exportMatch.index) + routeSetup + "\n" + content.slice(exportMatch.index);
+                modified = true;
+                setupReady = true;
+            }
+        }
+
+        if (modified) {
+            await fs.writeFile(routeIndexPath, content);
+        }
+
+        return importsReady && setupReady;
+    }
+
+    // Backward compatibility for projects created before routes/index.ts support.
+    const appPath = path.join(projectRoot, srcDir, "app.ts");
+    if (!await fs.pathExists(appPath)) {
         return false;
     }
 
-    let content = await fs.readFile(appPath, "utf-8");
+    let appContent = await fs.readFile(appPath, "utf-8");
     const authImport = `import authRoutes from "./routes/auth.routes";`;
     const userImport = `import userRoutes from "./routes/user.routes";`;
-    const hasAuthImport = content.includes(authImport);
-    const hasUserImport = content.includes(userImport);
-    const hasAuthRoute = /app\.use\(\s*authRoutes\s*\)/.test(content);
-    const hasUserRoute = /app\.use\(\s*["']\/api\/users["']\s*,\s*userRoutes\s*\)/.test(content);
+    const hasAuthImport = appContent.includes(authImport);
+    const hasUserImport = appContent.includes(userImport);
+    const hasAuthRoute =
+        /app\.use\(\s*authRoutes\s*\)/.test(appContent)
+        || /app\.use\(\s*["']\/api["']\s*,\s*authRoutes\s*\)/.test(appContent);
+    const hasUserRoute = /app\.use\(\s*["']\/api\/users["']\s*,\s*userRoutes\s*\)/.test(appContent);
+
     let modified = false;
     let importsReady = hasAuthImport && hasUserImport;
-
     if (!importsReady) {
         const importRegex = /^import .+ from .+;?\s*$/gm;
         let lastImportIndex = 0;
         let match;
 
-        while ((match = importRegex.exec(content)) !== null) {
+        while ((match = importRegex.exec(appContent)) !== null) {
             lastImportIndex = match.index + match[0].length;
         }
 
@@ -321,7 +390,7 @@ async function injectAuthRoutes(projectRoot: string, srcDir: string): Promise<bo
                 missingImports.push(userImport);
             }
 
-            content = content.slice(0, lastImportIndex) + `\n${missingImports.join("\n")}` + content.slice(lastImportIndex);
+            appContent = appContent.slice(0, lastImportIndex) + `\n${missingImports.join("\n")}` + appContent.slice(lastImportIndex);
             modified = true;
             importsReady = true;
         }
@@ -331,7 +400,7 @@ async function injectAuthRoutes(projectRoot: string, srcDir: string): Promise<bo
     if (!setupReady) {
         const setupLines: string[] = [];
         if (!hasAuthRoute) {
-            setupLines.push("app.use(authRoutes);");
+            setupLines.push('app.use("/api", authRoutes);');
         }
 
         if (!hasUserRoute) {
@@ -339,25 +408,16 @@ async function injectAuthRoutes(projectRoot: string, srcDir: string): Promise<bo
         }
 
         const routeSetup = `\n// Auth routes\n${setupLines.join("\n")}\n`;
-        const notFoundIndex = content.search(/^\s*app\.use\(\s*notFoundHandler\s*\);\s*$/m);
-        const errorHandlerIndex = content.search(/^\s*app\.use\(\s*errorHandler\s*\);\s*$/m);
-        const candidates = [notFoundIndex, errorHandlerIndex].filter((index) => index >= 0);
-        const insertionIndex = candidates.length > 0
-            ? Math.min(...candidates)
-            : (() => {
-                const exportMatch = content.match(/export default app;?\s*$/m);
-                return exportMatch?.index ?? -1;
-            })();
-
-        if (insertionIndex >= 0) {
-            content = content.slice(0, insertionIndex) + routeSetup + "\n" + content.slice(insertionIndex);
+        const exportMatch = appContent.match(/export default app;?\s*$/m);
+        if (exportMatch && exportMatch.index !== undefined) {
+            appContent = appContent.slice(0, exportMatch.index) + routeSetup + "\n" + appContent.slice(exportMatch.index);
             modified = true;
             setupReady = true;
         }
     }
 
     if (modified) {
-        await fs.writeFile(appPath, content);
+        await fs.writeFile(appPath, appContent);
     }
 
     return importsReady && setupReady;
@@ -544,12 +604,12 @@ export const add = async (moduleName: string) => {
         spinner.succeed("Files generated");
 
         if (resolvedModuleName === "auth") {
-            spinner.start("Configuring routes in app.ts...");
+            spinner.start("Configuring routes...");
             const injected = await injectAuthRoutes(projectRoot, srcDir);
             if (injected) {
-                spinner.succeed("Routes configured in app.ts");
+                spinner.succeed("Routes configured");
             } else {
-                spinner.warn("Could not find app.ts - routes need manual setup");
+                spinner.warn("Could not configure routes automatically");
             }
         }
 

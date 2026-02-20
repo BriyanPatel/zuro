@@ -12,6 +12,7 @@ export const auth = betterAuth({
     database: drizzleAdapter(db, {
         provider: authProvider,
     }),
+    basePath: "/api/auth",
     emailAndPassword: { enabled: true },
     plugins: [openAPI()],
     secret: env.BETTER_AUTH_SECRET,

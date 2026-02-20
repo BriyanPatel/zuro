@@ -25,6 +25,11 @@
           "type": "library"
         },
         {
+          "path": "express/routes/index.ts",
+          "target": "routes/index.ts",
+          "type": "library"
+        },
+        {
           "path": "express/tsconfig.json",
           "target": "../tsconfig.json",
           "type": "config"
