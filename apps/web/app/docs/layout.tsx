@@ -27,9 +27,6 @@ function SidebarFooter() {
 export default function Layout({ children }: { children: ReactNode }) {
   const docsContainerStyle = {
     "--fd-sidebar-width": "228px",
-    gridTemplate: `"sidebar header toc"
-      "sidebar toc-popover toc"
-      "sidebar main toc" 1fr / var(--fd-sidebar-col) minmax(0, 1fr) minmax(0, var(--fd-toc-width))`,
   } as CSSProperties;
 
   return (
@@ -48,7 +45,7 @@ export default function Layout({ children }: { children: ReactNode }) {
         defaultOpenLevel: 1,
         footer: <SidebarFooter />,
       }}
-      containerProps={{ style: docsContainerStyle }}
+      containerProps={{ style: docsContainerStyle, className: "zuro-docs-layout" }}
     >
       {children}
     </DocsLayout>

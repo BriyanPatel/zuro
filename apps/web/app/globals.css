@@ -188,6 +188,15 @@
   }
 }
 
+@media (min-width: 768px) {
+  #nd-docs-layout.zuro-docs-layout {
+    grid-template:
+      "sidebar header toc"
+      "sidebar toc-popover toc"
+      "sidebar main toc" 1fr / var(--fd-sidebar-col) minmax(0, 1fr) minmax(0, var(--fd-toc-width));
+  }
+}
+
 @keyframes floaty {
 
   0%,
