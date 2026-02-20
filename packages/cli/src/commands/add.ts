@@ -294,7 +294,8 @@ async function injectAuthRoutes(projectRoot: string, srcDir: string): Promise<bo
     let appContent = await fs.readFile(appPath, "utf-8");
     const authHandlerImport = `import { toNodeHandler } from "better-auth/node";`;
     const authImport = `import { auth } from "./lib/auth";`;
-    const userImport = `import userRoutes from "./routes/user.routes";`;
+    const routeIndexUserImport = `import userRoutes from "./user.routes";`;
+    const appUserImport = `import userRoutes from "./routes/user.routes";`;
 
     let appModified = false;
 
@@ -362,7 +363,7 @@ async function injectAuthRoutes(projectRoot: string, srcDir: string): Promise<bo
         let routeContent = await fs.readFile(routeIndexPath, "utf-8");
         let routeModified = false;
 
-        const userImportResult = appendImport(routeContent, userImport);
+        const userImportResult = appendImport(routeContent, routeIndexUserImport);
         if (!userImportResult.inserted) {
             return false;
         }
@@ -401,7 +402,7 @@ async function injectAuthRoutes(projectRoot: string, srcDir: string): Promise<bo
             appModified = true;
         }
 
-        const userImportResult = appendImport(appContent, userImport);
+        const userImportResult = appendImport(appContent, appUserImport);
         if (!userImportResult.inserted) {
             return false;
         }
