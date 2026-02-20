@@ -114,8 +114,20 @@ So you can use `add auth` safely on either dialect.
 | `/api/auth/sign-up/email` | `POST` | Register |
 | `/api/auth/sign-in/email` | `POST` | Login |
 | `/api/auth/sign-out` | `POST` | Logout |
-| `/api/auth/session` | `GET` | Current session |
+| `/api/auth/get-session` | `GET` | Current session |
 | `/api/users/me` | `GET` | Current user profile |
+
+---
+
+## API Reference (OpenAPI)
+
+Because auth is configured with the Better Auth `openAPI` plugin, you can inspect available auth endpoints in your browser:
+
+```text
+http://localhost:3000/api/auth/reference
+```
+
+This is useful for quickly checking request/response shapes while building.
 
 ---
 
