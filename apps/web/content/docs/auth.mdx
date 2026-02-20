@@ -48,7 +48,7 @@ Running `add auth` also installs missing required modules:
       <File name="auth.ts" />
     </Folder>
     <Folder name="routes" defaultOpen>
-      <File name="auth.routes.ts" />
+      <File name="index.ts" />
       <File name="user.routes.ts" />
     </Folder>
     <Folder name="controllers" defaultOpen>
@@ -69,16 +69,16 @@ Running `add auth` also installs missing required modules:
 
 ## App Wiring
 
-CLI auto-injects routes into `src/routes/index.ts`:
+CLI auto-injects user routes into `src/routes/index.ts`:
 
 ```ts
-rootRouter.use("/auth", authRoutes);
 rootRouter.use("/users", userRoutes);
 ```
 
-`app.ts` stays clean and mounts one API prefix:
+Better Auth is mounted directly in `app.ts` (before `express.json()`):
 
 ```ts
+app.all(/^\/api\/auth(?:\/.*)?$/, toNodeHandler(auth));
 app.use("/api", rootRouter);
 ```
 

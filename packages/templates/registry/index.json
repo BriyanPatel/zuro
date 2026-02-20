@@ -159,11 +159,6 @@
           "type": "library"
         },
         {
-          "path": "express/routes/auth.routes.ts",
-          "target": "routes/auth.routes.ts",
-          "type": "library"
-        },
-        {
           "path": "express/controllers/user.controller.ts",
           "target": "controllers/user.controller.ts",
           "type": "library"
