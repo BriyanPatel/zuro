@@ -24,6 +24,7 @@ import {
   Users,
   AlertTriangle,
   X,
+  Github,
 } from "lucide-react";
 
 /* ─── data ─── */
@@ -220,6 +221,16 @@ export function ProfessionalLanding() {
             <span className="zl-logo-text">Zuro</span>
           </Link>
           <nav className="zl-nav">
+            <a
+              href="https://github.com/BriyanPatel/zuro"
+              target="_blank"
+              rel="noreferrer"
+              className="zl-nav-link"
+              aria-label="GitHub repository"
+              title="GitHub repository"
+            >
+              <Github className="h-4 w-4" />
+            </a>
             <Link href="/docs" className="zl-nav-link">Docs</Link>
             <Link href="/docs/init" className="zl-cta-btn">
               Get Started
@@ -836,6 +847,15 @@ export function ProfessionalLanding() {
               <span className="zl-logo-mark zl-logo-mark-sm">Z</span> Zuro
             </span>
             <div className="zl-footer-links">
+              <a
+                href="https://github.com/BriyanPatel/zuro"
+                target="_blank"
+                rel="noreferrer"
+                aria-label="GitHub repository"
+                title="GitHub repository"
+              >
+                <Github className="h-4 w-4" />
+              </a>
               <Link href="/docs">Docs</Link>
               <Link href="/docs/init">Quick Start</Link>
             </div>
