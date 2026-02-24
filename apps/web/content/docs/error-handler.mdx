@@ -5,34 +5,33 @@ description: Centralized API errors with safe logging
 
 # Error Handler
 
-Add a production-safe error layer for your API.
-
-You get:
-- consistent JSON error responses
-- custom error classes
-- async handler wrapper
-- 404 handler
-- safe error logging (sensitive fields redacted)
+Add a production-safe error layer with consistent JSON error responses, custom error classes, async handler wrapper, and safe logging.
 
 ---
 
 ## Installation
 
-<Tabs items={['npm', 'pnpm', 'bun']}>
+<Tabs items={["npm", "pnpm", "bun"]}>
   <Tab value="npm">
-  ```bash
-  npx zuro-cli add error-handler
-  ```
+
+```bash
+npx zuro-cli add error-handler
+```
+
   </Tab>
   <Tab value="pnpm">
-  ```bash
-  pnpm dlx zuro-cli add error-handler
-  ```
+
+```bash
+pnpm dlx zuro-cli add error-handler
+```
+
   </Tab>
   <Tab value="bun">
-  ```bash
-  bun x zuro-cli add error-handler
-  ```
+
+```bash
+bun x zuro-cli add error-handler
+```
+
   </Tab>
 </Tabs>
 
@@ -61,9 +60,50 @@ app.use(errorHandler);
 
 ---
 
+## Usage
+
+<Steps>
+<Step>
+### Throw typed errors
+
+```ts
+import { NotFoundError, ForbiddenError } from "./lib/errors";
+
+if (!user) {
+  throw new NotFoundError("User not found");
+}
+
+if (!canEdit) {
+  throw new ForbiddenError("You cannot edit this resource");
+}
+```
+
+</Step>
+
+<Step>
+### Wrap route handlers
+
+```ts
+import { Router } from "express";
+import { asyncHandler } from "./middleware/error-handler";
+import { UserController } from "./controllers/user.controller";
+
+const router = Router();
+
+router.get("/:id", asyncHandler(UserController.getUser));
+router.post("/", asyncHandler(UserController.createUser));
+```
+
+`asyncHandler` supports both sync and async handlers.
+
+</Step>
+</Steps>
+
+---
+
 ## Error Response Contract
 
-All errors use the same base shape:
+All errors use the same shape:
 
 ```ts
 {
@@ -93,100 +133,25 @@ All errors use the same base shape:
   "status": "error",
   "code": "VALIDATION_ERROR",
   "message": "Validation failed",
-  "errors": [
-    { "path": "body.email", "message": "Invalid email" }
-  ]
+  "errors": [{ "path": "body.email", "message": "Invalid email" }]
 }
 ```
 
-### Development Mode
-
-In `NODE_ENV=development`, stack is included.
-
----
-
-## Request ID Support
-
-If request id is available (for example from `x-request-id` header), it is included in:
-- error response (`requestId`)
-- error logs (`requestId`)
-
-Example response:
-
-```json
-{
-  "status": "error",
-  "code": "INTERNAL_ERROR",
-  "message": "Something went wrong",
-  "requestId": "req_12345"
-}
-```
-
----
-
-## Safe Logging Behavior
-
-Error logs redact sensitive fields from request body, including keys like:
-- `password`
-- `token`
-- `authorization`
-- `cookie`
-- `secret`
-
-So logs stay useful without leaking secrets.
-
----
-
-## Usage
-
-<Steps>
-<Step>
-### Throw Typed Errors
-
-```ts
-import { NotFoundError, ForbiddenError } from "./lib/errors";
-
-if (!user) {
-  throw new NotFoundError("User not found");
-}
-
-if (!canEdit) {
-  throw new ForbiddenError("You cannot edit this resource");
-}
-```
-</Step>
-
-<Step>
-### Wrap Route Handlers
-
-```ts
-import { Router } from "express";
-import { asyncHandler } from "./middleware/error-handler";
-import { UserController } from "./controllers/user.controller";
-
-const router = Router();
-
-router.get("/:id", asyncHandler(UserController.getUser));
-router.post("/", asyncHandler(UserController.createUser));
-```
-
-`asyncHandler` supports both sync and async handlers.
-</Step>
-</Steps>
+In `NODE_ENV=development`, stack traces are included.
 
 ---
 
 ## Available Error Classes
 
-| Class | Status | Default Code |
-|-------|--------|--------------|
-| `BadRequestError` | 400 | `BAD_REQUEST` |
-| `UnauthorizedError` | 401 | `UNAUTHORIZED` |
-| `ForbiddenError` | 403 | `FORBIDDEN` |
-| `NotFoundError` | 404 | `NOT_FOUND` |
-| `ConflictError` | 409 | `CONFLICT` |
-| `ValidationError` | 422 | `VALIDATION_ERROR` |
-| `InternalServerError` | 500 | `INTERNAL_ERROR` |
+| Class                 | Status | Default Code       |
+| --------------------- | ------ | ------------------ |
+| `BadRequestError`     | 400    | `BAD_REQUEST`      |
+| `UnauthorizedError`   | 401    | `UNAUTHORIZED`     |
+| `ForbiddenError`      | 403    | `FORBIDDEN`        |
+| `NotFoundError`       | 404    | `NOT_FOUND`        |
+| `ConflictError`       | 409    | `CONFLICT`         |
+| `ValidationError`     | 422    | `VALIDATION_ERROR` |
+| `InternalServerError` | 500    | `INTERNAL_ERROR`   |
 
 You can override the error code:
 
@@ -210,11 +175,37 @@ export class RateLimitError extends AppError {
 
 ---
 
-## Integration Notes
+## Request ID Support
 
-- `validator` returns validation responses directly by default.
-- If a `ZodError` reaches the error handler, it is formatted as `VALIDATION_ERROR` with status `422`.
-- If headers were already sent, middleware safely delegates to Express (`next(err)`).
+If a request ID is available (e.g. from `x-request-id` header), it is included in error responses and logs:
+
+```json
+{
+  "status": "error",
+  "code": "INTERNAL_ERROR",
+  "message": "Something went wrong",
+  "requestId": "req_12345"
+}
+```
+
+---
+
+## Safe Logging
+
+Error logs redact sensitive fields from request body, including:
+
+- `password`, `token`, `authorization`, `cookie`, `secret`
+
+So logs stay useful without leaking secrets.
+
+---
+
+## Troubleshooting
+
+- `Cannot find module './lib/errors'`: run the install command inside a Zuro project.
+- `Error handler not catching errors`: make sure `app.use(errorHandler)` is the **last** middleware in `app.ts`.
+- `Stack trace in production`: verify `NODE_ENV` is set to `production`.
+- `ZodError not formatted`: if a `ZodError` reaches the error handler, it is formatted as `VALIDATION_ERROR` with status `422`.
 
 ---
 
@@ -223,11 +214,11 @@ export class RateLimitError extends AppError {
 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
   <a href="/docs/validator" className="block border border-border rounded-xl p-5 bg-card hover:border-green-500/50 transition-colors no-underline">
     <h3 className="font-bold text-foreground mb-1">→ Add Validator</h3>
-    <p className="text-sm text-muted-foreground">Validate body/query/params before handlers</p>
+    <div className="text-sm text-muted-foreground">Validate body/query/params before handlers</div>
   </a>
 
   <a href="/docs/auth" className="block border border-border rounded-xl p-5 bg-card hover:border-green-500/50 transition-colors no-underline">
     <h3 className="font-bold text-foreground mb-1">→ Add Auth</h3>
-    <p className="text-sm text-muted-foreground">Add login, signup, and protected routes</p>
+    <div className="text-sm text-muted-foreground">Add login, signup, and protected routes</div>
   </a>
 </div>

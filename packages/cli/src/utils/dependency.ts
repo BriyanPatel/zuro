@@ -13,6 +13,7 @@ const BLOCK_SIGNATURES: Record<string, string> = {
     "error-handler": "lib/errors.ts",
     logger: "lib/logger.ts",
     auth: "lib/auth.ts",
+    mailer: "lib/mailer.ts",
 };
 
 /**

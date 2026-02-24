@@ -444,6 +444,9 @@ export const add = async (moduleName: string) => {
     let databaseBackupPath: string | null = null;
     let generatedAuthSecret = false;
     let authDatabaseDialect: DatabaseModuleName | null = null;
+    let customSmtpVars: Record<string, string> | undefined;
+    let usedDefaultSmtp = false;
+    let mailerProvider: "smtp" | "resend" = "smtp";
 
     if (resolvedModuleName === "database") {
         const variantResponse = await prompts({
@@ -514,6 +517,116 @@ export const add = async (moduleName: string) => {
         customDbUrl = validateDatabaseUrl(enteredUrl || defaultUrl, resolvedModuleName);
     }
 
+    if (resolvedModuleName === "mailer") {
+        const providerResponse = await prompts({
+            type: "select",
+            name: "provider",
+            message: "Which email provider?",
+            choices: [
+                { title: "SMTP (Nodemailer)", description: "Gmail, Mailtrap, any SMTP server", value: "smtp" },
+                { title: "Resend", description: "API-based, easiest setup", value: "resend" },
+            ],
+        });
+
+        if (providerResponse.provider === undefined) {
+            console.log(chalk.yellow("Operation cancelled."));
+            return;
+        }
+
+        mailerProvider = providerResponse.provider;
+
+        console.log(chalk.dim("  Tip: Leave fields blank to use placeholder values and configure later\n"));
+
+        if (mailerProvider === "smtp") {
+            const smtpResponse = await prompts([
+                {
+                    type: "text",
+                    name: "host",
+                    message: "SMTP Host",
+                    initial: "",
+                },
+                {
+                    type: "text",
+                    name: "port",
+                    message: "SMTP Port",
+                    initial: "587",
+                },
+                {
+                    type: "text",
+                    name: "user",
+                    message: "SMTP User",
+                    initial: "",
+                },
+                {
+                    type: "password",
+                    name: "pass",
+                    message: "SMTP Password",
+                },
+                {
+                    type: "text",
+                    name: "from",
+                    message: "Mail From address",
+                    initial: "",
+                },
+            ]);
+
+            if (smtpResponse.host === undefined) {
+                console.log(chalk.yellow("Operation cancelled."));
+                return;
+            }
+
+            const host = smtpResponse.host?.trim() || "";
+            const user = smtpResponse.user?.trim() || "";
+            const pass = smtpResponse.pass?.trim() || "";
+            const from = smtpResponse.from?.trim() || "";
+            const port = smtpResponse.port?.trim() || "587";
+
+            usedDefaultSmtp = !host && !user;
+
+            if (!usedDefaultSmtp) {
+                customSmtpVars = {
+                    SMTP_HOST: host || "smtp.example.com",
+                    SMTP_PORT: port,
+                    SMTP_USER: user || "your-email@example.com",
+                    SMTP_PASS: pass || "your-password",
+                    MAIL_FROM: from || "noreply@example.com",
+                };
+            }
+        } else {
+            const resendResponse = await prompts([
+                {
+                    type: "text",
+                    name: "apiKey",
+                    message: "Resend API Key",
+                    initial: "",
+                },
+                {
+                    type: "text",
+                    name: "from",
+                    message: "Mail From address",
+                    initial: "",
+                },
+            ]);
+
+            if (resendResponse.apiKey === undefined) {
+                console.log(chalk.yellow("Operation cancelled."));
+                return;
+            }
+
+            const apiKey = resendResponse.apiKey?.trim() || "";
+            const from = resendResponse.from?.trim() || "";
+
+            usedDefaultSmtp = !apiKey;
+
+            if (!usedDefaultSmtp) {
+                customSmtpVars = {
+                    RESEND_API_KEY: apiKey || "re_your_api_key",
+                    MAIL_FROM: from || "onboarding@resend.dev",
+                };
+            }
+        }
+    }
+
     const pm = resolvePackageManager(projectRoot);
     const spinner = ora(`Checking registry for ${resolvedModuleName}...`).start();
     let currentStep = "package manager preflight";
@@ -541,8 +654,21 @@ export const add = async (moduleName: string) => {
         currentStep = "dependency installation";
         spinner.start("Installing dependencies...");
 
-        await installDependencies(pm, module.dependencies || [], projectRoot);
-        await installDependencies(pm, module.devDependencies || [], projectRoot, { dev: true });
+        let runtimeDeps = module.dependencies || [];
+        let devDeps = module.devDependencies || [];
+
+        if (resolvedModuleName === "mailer") {
+            if (mailerProvider === "resend") {
+                runtimeDeps = ["resend"];
+                devDeps = [];
+            } else {
+                runtimeDeps = ["nodemailer"];
+                devDeps = ["@types/nodemailer"];
+            }
+        }
+
+        await installDependencies(pm, runtimeDeps, projectRoot);
+        await installDependencies(pm, devDeps, projectRoot, { dev: true });
 
         spinner.succeed("Dependencies installed");
 
@@ -564,6 +690,16 @@ export const add = async (moduleName: string) => {
                 && authDatabaseDialect === "database-mysql"
             ) {
                 fetchPath = "express/db/schema/auth.mysql.ts";
+                expectedSha256 = undefined;
+                expectedSize = undefined;
+            }
+
+            if (
+                resolvedModuleName === "mailer"
+                && file.target === "lib/mailer.ts"
+                && mailerProvider === "resend"
+            ) {
+                fetchPath = "express/lib/mailer.resend.ts";
                 expectedSha256 = undefined;
                 expectedSize = undefined;
             }
@@ -620,7 +756,12 @@ export const add = async (moduleName: string) => {
             }
         }
 
-        const envConfig = ENV_CONFIGS[resolvedModuleName as keyof typeof ENV_CONFIGS];
+        let envConfigKey = resolvedModuleName;
+        if (resolvedModuleName === "mailer" && mailerProvider === "resend") {
+            envConfigKey = "mailer-resend";
+        }
+
+        const envConfig = ENV_CONFIGS[envConfigKey as keyof typeof ENV_CONFIGS];
         if (envConfig) {
             currentStep = "environment configuration";
             spinner.start("Updating environment configuration...");
@@ -628,6 +769,10 @@ export const add = async (moduleName: string) => {
             const envVars: Record<string, string> = { ...envConfig.envVars };
             if (customDbUrl && isDatabaseModule(resolvedModuleName)) {
                 envVars.DATABASE_URL = customDbUrl;
+            }
+
+            if (resolvedModuleName === "mailer" && customSmtpVars) {
+                Object.assign(envVars, customSmtpVars);
             }
 
             if (resolvedModuleName === "auth") {
@@ -677,6 +822,14 @@ export const add = async (moduleName: string) => {
             }
 
             console.log(chalk.yellow("ℹ Run migrations: npx drizzle-kit generate && npx drizzle-kit migrate"));
+        }
+
+        if (resolvedModuleName === "mailer") {
+            if (usedDefaultSmtp) {
+                console.log(chalk.yellow("ℹ Placeholder SMTP values added to .env — update them before sending emails."));
+            } else {
+                console.log(chalk.yellow("ℹ Review SMTP configuration in .env to ensure values are correct."));
+            }
         }
     } catch (error) {
         spinner.fail(chalk.red(`Failed during ${currentStep}.`));

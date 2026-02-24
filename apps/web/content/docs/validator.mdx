@@ -5,27 +5,33 @@ description: Simple request validation with Zod
 
 # Validator
 
-Add a simple validation middleware for `body`, `query`, and `params`.
+Add a validation middleware for `body`, `query`, and `params` using Zod schemas.
 
 ---
 
 ## Installation
 
-<Tabs items={['npm', 'pnpm', 'bun']}>
+<Tabs items={["npm", "pnpm", "bun"]}>
   <Tab value="npm">
-  ```bash
-  npx zuro-cli add validator
-  ```
+
+```bash
+npx zuro-cli add validator
+```
+
   </Tab>
   <Tab value="pnpm">
-  ```bash
-  pnpm dlx zuro-cli add validator
-  ```
+
+```bash
+pnpm dlx zuro-cli add validator
+```
+
   </Tab>
   <Tab value="bun">
-  ```bash
-  bun x zuro-cli add validator
-  ```
+
+```bash
+bun x zuro-cli add validator
+```
+
   </Tab>
 </Tabs>
 
@@ -41,15 +47,60 @@ Add a simple validation middleware for `body`, `query`, and `params`.
   </Folder>
 </Files>
 
-Runtime dependency installed:
-- `zod`
+Dependency installed: `zod`
+
+---
+
+## Usage
+
+### Basic example
+
+```ts
+import { Router } from "express";
+import { z } from "zod";
+import { validate } from "./middleware/validate";
+
+const router = Router();
+
+const createUserSchema = z.object({
+  body: z.object({
+    name: z.string().min(2),
+    email: z.string().email(),
+  }),
+});
+
+router.post("/users", validate(createUserSchema), (req, res) => {
+  const { name, email } = req.body;
+  res.json({ name, email });
+});
+```
+
+### Query + Params example
+
+```ts
+const listPostsSchema = z.object({
+  query: z.object({
+    page: z.coerce.number().min(1).default(1),
+    limit: z.coerce.number().min(1).max(100).default(20),
+  }),
+  params: z.object({
+    userId: z.string().uuid(),
+  }),
+});
+
+router.get("/users/:userId/posts", validate(listPostsSchema), (req, res) => {
+  const { page, limit } = req.query;
+  const { userId } = req.params;
+  res.json({ page, limit, userId });
+});
+```
 
 ---
 
 ## Middleware API
 
 ```ts
-validate(schema)
+validate(schema);
 ```
 
 Your schema should validate this shape:
@@ -75,9 +126,7 @@ Your schema should validate this shape:
   "status": "error",
   "code": "VALIDATION_ERROR",
   "message": "Validation failed",
-  "errors": [
-    { "path": "body.email", "message": "Invalid email" }
-  ]
+  "errors": [{ "path": "body.email", "message": "Invalid email" }]
 }
 ```
 
@@ -85,61 +134,23 @@ Your schema should validate this shape:
 
 ---
 
-## Basic Usage
-
-```ts
-import { Router } from "express";
-import { z } from "zod";
-import { validate } from "./middleware/validate";
-
-const router = Router();
-
-const createUserSchema = z.object({
-  body: z.object({
-    name: z.string().min(2),
-    email: z.string().email(),
-  }),
-});
-
-router.post("/users", validate(createUserSchema), (req, res) => {
-  const { name, email } = req.body;
-  res.json({ name, email });
-});
-```
-
----
-
-## Query + Params Example
-
-```ts
-const listPostsSchema = z.object({
-  query: z.object({
-    page: z.coerce.number().min(1).default(1),
-    limit: z.coerce.number().min(1).max(100).default(20),
-  }),
-  params: z.object({
-    userId: z.string().uuid(),
-  }),
-});
-
-router.get("/users/:userId/posts", validate(listPostsSchema), (req, res) => {
-  const { page, limit } = req.query;
-  const { userId } = req.params;
-  res.json({ page, limit, userId });
-});
-```
-
----
-
 ## Works with Error Handler
 
 Validator returns validation responses directly by default.
 
-If anything else throws, it still goes to your error middleware:
+If anything else throws, it goes to your error middleware:
 
 ```bash
 npx zuro-cli add error-handler
 ```
+
+---
+
+## Troubleshooting
+
+- `Cannot find module './middleware/validate'`: run the install command inside a Zuro project.
+- `422 Validation failed`: check your request body matches the Zod schema fields and types.
+- Schema not validating `query`/`params`: make sure your schema wraps them in `z.object({ query: ..., params: ... })`.
 
 ---
 

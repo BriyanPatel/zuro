@@ -148,4 +148,30 @@ export const ENV_CONFIGS = {
             { name: "BETTER_AUTH_URL", schema: "z.string().url()" },
         ],
     },
+    mailer: {
+        envVars: {
+            SMTP_HOST: "smtp.example.com",
+            SMTP_PORT: "587",
+            SMTP_USER: "your-email@example.com",
+            SMTP_PASS: "your-password",
+            MAIL_FROM: "noreply@example.com",
+        },
+        schemaFields: [
+            { name: "SMTP_HOST", schema: "z.string().min(1)" },
+            { name: "SMTP_PORT", schema: "z.coerce.number().default(587)" },
+            { name: "SMTP_USER", schema: "z.string().min(1)" },
+            { name: "SMTP_PASS", schema: "z.string().min(1)" },
+            { name: "MAIL_FROM", schema: "z.string().email()" },
+        ],
+    },
+    "mailer-resend": {
+        envVars: {
+            RESEND_API_KEY: "re_your_api_key",
+            MAIL_FROM: "onboarding@resend.dev",
+        },
+        schemaFields: [
+            { name: "RESEND_API_KEY", schema: "z.string().min(1)" },
+            { name: "MAIL_FROM", schema: "z.string().min(1)" },
+        ],
+    },
 };

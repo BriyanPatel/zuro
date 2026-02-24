@@ -5,112 +5,43 @@ description: Add PostgreSQL or MySQL with Drizzle in one command
 
 # Database
 
-Use this command to scaffold Drizzle + a DB client (PostgreSQL or MySQL) into your Zuro project.
+Scaffold Drizzle ORM with a PostgreSQL or MySQL client into your Zuro project. Installs dependencies, generates DB files, and configures environment variables.
 
 ---
 
-## What This Command Does
+## Installation
 
-When you run `add database`, Zuro:
-
-1. Installs DB dependencies.
-2. Generates DB files.
-3. Adds/updates `DATABASE_URL` in `.env`.
-4. Adds `DATABASE_URL` validation in `env.ts`.
-5. Prints next steps (schema + migrations).
-
----
-
-## Command
-
-<Tabs items={['npm', 'pnpm', 'bun']}>
+<Tabs items={["npm", "pnpm", "bun"]}>
   <Tab value="npm">
-  ```bash
-  npx zuro-cli add database
-  ```
+
+```bash
+npx zuro-cli add database
+```
+
   </Tab>
   <Tab value="pnpm">
-  ```bash
-  pnpm dlx zuro-cli add database
-  ```
+
+```bash
+pnpm dlx zuro-cli add database
+```
+
   </Tab>
   <Tab value="bun">
-  ```bash
-  bun x zuro-cli add database
-  ```
+
+```bash
+bun x zuro-cli add database
+```
+
   </Tab>
 </Tabs>
 
----
+You can also skip the dialect picker by specifying it directly: `add database-pg` or `add database-mysql`.
 
-## Supported Module Inputs
-
-You can call the database module with any of these:
-
-- `database` (interactive dialect picker)
-- `database-pg`
-- `database-mysql`
-- `pg`, `postgres`, `postgresql`
-- `mysql`
+Aliases like `pg`, `postgres`, `postgresql`, `mysql` also work.
 
 ---
 
-## Flags
-
-Dedicated DB flags are not available yet.
-
-Current practical options:
-- `zuro-cli add database` for interactive setup
-- `zuro-cli add database-pg` or `zuro-cli add database-mysql` to skip dialect selection
-- `zuro-cli add database --help` to see command help
-
----
-
-## Interactive Flow
-
-<Steps>
-<Step>
-### Pick A Dialect
-
-```text
-? Which database dialect?
-❯ PostgreSQL
-  MySQL
-```
-</Step>
-
-<Step>
-### Enter Database URL
-
-```text
-Tip: Leave blank to use postgresql://postgres@localhost:5432/mydb
-? Database URL
-```
-
-Defaults:
-- PostgreSQL: `postgresql://postgres@localhost:5432/mydb`
-- MySQL: `mysql://root@localhost:3306/mydb`
-</Step>
-
-<Step>
-### Install + Scaffold
-
-CLI installs dependencies and generates DB files automatically.
-</Step>
-</Steps>
-
----
-
-## What Gets Installed
-
-| Dialect | Runtime deps | Dev deps |
-|---------|---------------|----------|
-| PostgreSQL | `drizzle-orm`, `pg` | `drizzle-kit`, `@types/pg` |
-| MySQL | `drizzle-orm`, `mysql2` | `drizzle-kit` |
-
----
-
-## Files Generated
+## What Gets Added
 
 <Files>
   <Folder name="src" defaultOpen>
@@ -126,55 +57,92 @@ CLI installs dependencies and generates DB files automatically.
   <File name=".env" />
 </Files>
 
-`drizzle.config.ts` is generated at project root, and its schema path follows your configured `srcDir` (for example `./src/db/schema/*`).
+| Dialect    | Runtime deps            | Dev deps                   |
+| ---------- | ----------------------- | -------------------------- |
+| PostgreSQL | `drizzle-orm`, `pg`     | `drizzle-kit`, `@types/pg` |
+| MySQL      | `drizzle-orm`, `mysql2` | `drizzle-kit`              |
 
 ---
 
-## What To Expect After Running
+## Interactive Flow
 
-Typical success output:
+<Steps>
+<Step>
+### Pick a Dialect
 
 ```text
-✔ database-pg added successfully!
-
-📋 Next Steps:
-1. Create schemas in src/db/schema/
-2. Ensure the database exists
-3. Run migrations
+? Which database dialect?
+❯ PostgreSQL
+  MySQL
 ```
 
-If you left DB URL blank, you will also see a reminder to update `DATABASE_URL`.
+</Step>
+
+<Step>
+### Enter Database URL
+
+```text
+Tip: Leave blank to use postgresql://postgres@localhost:5432/mydb
+? Database URL
+```
+
+Defaults:
+
+- PostgreSQL: `postgresql://postgres@localhost:5432/mydb`
+- MySQL: `mysql://root@localhost:3306/mydb`
+
+</Step>
+
+<Step>
+### Done
+
+CLI installs dependencies, generates files, and configures `.env` and `env.ts` automatically.
+
+</Step>
+</Steps>
 
 ---
 
-## First-Time Setup (Recommended)
+## Usage
 
-1. Add module:
-   ```bash
-   npx zuro-cli add database
-   ```
-2. Create a schema file:
-   ```typescript title="src/db/schema/posts.ts"
-   import { pgTable, text } from "drizzle-orm/pg-core";
+<Steps>
+<Step>
+### Create a schema file
 
-   export const posts = pgTable("posts", {
-     id: text("id").primaryKey(),
-     title: text("title").notNull(),
-   });
-   ```
-3. Export schema:
-   ```typescript title="src/db/schema/index.ts"
-   export * from "./posts";
-   ```
-4. Create DB and run migrations:
-   ```bash
-   npx drizzle-kit generate
-   npx drizzle-kit migrate
-   ```
+```ts title="src/db/schema/posts.ts"
+import { pgTable, text } from "drizzle-orm/pg-core";
+
+export const posts = pgTable("posts", {
+  id: text("id").primaryKey(),
+  title: text("title").notNull(),
+});
+```
+
+</Step>
+
+<Step>
+### Export schema
+
+```ts title="src/db/schema/index.ts"
+export * from "./posts";
+```
+
+</Step>
+
+<Step>
+### Run migrations
+
+```bash
+npx drizzle-kit generate
+npx drizzle-kit migrate
+```
+
+</Step>
+</Steps>
 
 ---
 
-## Environment Behavior
+## Environment Variables
 
 When you add a database module:
 
@@ -184,7 +152,7 @@ When you add a database module:
 
 ---
 
-## Dialect Switching Safety
+## Dialect Switching
 
 If your project already has one DB dialect and you add the other:
 
@@ -194,44 +162,58 @@ If your project already has one DB dialect and you add the other:
 
 ---
 
-## Troubleshooting
+## URL Examples
 
-- `Invalid database URL`: use a valid URL format (`postgresql://...` or `mysql://...`).
-- `Package manager ... not installed`: install selected PM (`pnpm`, `bun`, etc.) or use npm.
-- `Failed during registry fetch`: verify internet/registry URL and retry.
-- `Module not found`: run `npx zuro-cli add database` (or `database-pg`/`database-mysql`).
+| Database                 | URL                                                            |
+| ------------------------ | -------------------------------------------------------------- |
+| PostgreSQL local         | `postgresql://postgres@localhost:5432/mydb`                    |
+| PostgreSQL with password | `postgresql://user:password@localhost:5432/mydb`               |
+| MySQL local              | `mysql://root@localhost:3306/mydb`                             |
+| MySQL with password      | `mysql://root:password@localhost:3306/mydb`                    |
+| Neon                     | `postgresql://user:pass@ep-xxx.neon.tech/mydb?sslmode=require` |
+| PlanetScale              | `mysql://user:pass@aws.connect.psdb.cloud/mydb?ssl=...`        |
 
 ---
 
-## URL Examples
+## Troubleshooting
 
-| Database | URL |
-|----------|-----|
-| PostgreSQL local | `postgresql://postgres@localhost:5432/mydb` |
-| PostgreSQL with password | `postgresql://user:password@localhost:5432/mydb` |
-| MySQL local | `mysql://root@localhost:3306/mydb` |
-| MySQL with password | `mysql://root:password@localhost:3306/mydb` |
-| Neon | `postgresql://user:pass@ep-xxx.neon.tech/mydb?sslmode=require` |
-| PlanetScale | `mysql://user:pass@aws.connect.psdb.cloud/mydb?ssl=...` |
+- `Invalid database URL`: use a valid URL format (`postgresql://...` or `mysql://...`).
+- `Package manager not installed`: install your selected PM or use npm.
+- `Failed during registry fetch`: verify internet connection and retry.
+- `Module not found`: run the install command inside a Zuro project.
 
 ---
 
 ## Next Steps
 
-<Tabs items={['npm', 'pnpm', 'bun']}>
-  <Tab value="npm">
-  ```bash
-  npx zuro-cli add auth
-  ```
-  </Tab>
-  <Tab value="pnpm">
-  ```bash
-  pnpm dlx zuro-cli add auth
-  ```
-  </Tab>
-  <Tab value="bun">
-  ```bash
-  bun x zuro-cli add auth
-  ```
-  </Tab>
-</Tabs>
+<div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+  <a href="/docs/auth" className="block border border-border rounded-xl p-5 bg-card hover:border-green-500/50 transition-colors no-underline">
+    <h3 className="font-bold text-foreground mb-1">→ Add Auth</h3>
+    <div className="text-sm text-muted-foreground">User signup, login, and sessions</div>
+  </a>
+
+<a
+  href="/docs/error-handler"
+  className="block border border-border rounded-xl p-5 bg-card hover:border-green-500/50 transition-colors no-underline"
+>
+  <h3 className="font-bold text-foreground mb-1">→ Add Error Handler</h3>
+  <div className="text-sm text-muted-foreground">
+    Consistent API error responses
+  </div>
+</a>
+
+<a
+  href="/docs/validator"
+  className="block border border-border rounded-xl p-5 bg-card hover:border-green-500/50 transition-colors no-underline"
+>
+  <h3 className="font-bold text-foreground mb-1">→ Add Validator</h3>
+  <div className="text-sm text-muted-foreground">
+    Request validation with Zod
+  </div>
+</a>
+
+  <a href="/docs/mailer" className="block border border-border rounded-xl p-5 bg-card hover:border-green-500/50 transition-colors no-underline">
+    <h3 className="font-bold text-foreground mb-1">→ Add Mailer</h3>
+    <div className="text-sm text-muted-foreground">Send emails with SMTP or Resend</div>
+  </a>
+</div>

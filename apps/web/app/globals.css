@@ -188,8 +188,13 @@
   }
 }
 
+#nd-docs-layout.zuro-docs-layout {
+  --fd-sidebar-width: 0px;
+}
+
 @media (min-width: 768px) {
   #nd-docs-layout.zuro-docs-layout {
+    --fd-sidebar-width: 228px;
     grid-template:
       "sidebar header toc"
       "sidebar toc-popover toc"

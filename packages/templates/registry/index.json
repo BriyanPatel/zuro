@@ -183,6 +183,36 @@
         "better-auth"
       ],
       "devDependencies": []
+    },
+    "mailer": {
+      "type": "block",
+      "files": [
+        {
+          "path": "express/lib/mailer.ts",
+          "target": "lib/mailer.ts",
+          "type": "library"
+        },
+        {
+          "path": "express/lib/mail-templates/index.ts",
+          "target": "lib/mail-templates/index.ts",
+          "type": "library"
+        },
+        {
+          "path": "express/lib/mail-templates/welcome.ts",
+          "target": "lib/mail-templates/welcome.ts",
+          "type": "library"
+        }
+      ],
+      "moduleDependencies": [
+        "core",
+        "error-handler"
+      ],
+      "dependencies": [
+        "nodemailer"
+      ],
+      "devDependencies": [
+        "@types/nodemailer"
+      ]
     }
   }
 }

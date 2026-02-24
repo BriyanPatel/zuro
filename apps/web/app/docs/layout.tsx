@@ -1,6 +1,6 @@
 import { DocsLayout } from "fumadocs-ui/layouts/docs";
 import { source } from "@/lib/source";
-import type { CSSProperties, ReactNode } from "react";
+import type { ReactNode } from "react";
 
 function ZuroMark() {
   return (
@@ -25,9 +25,6 @@ function SidebarFooter() {
 }
 
 export default function Layout({ children }: { children: ReactNode }) {
-  const docsContainerStyle = {
-    "--fd-sidebar-width": "228px",
-  } as CSSProperties;
 
   return (
     <DocsLayout
@@ -45,7 +42,7 @@ export default function Layout({ children }: { children: ReactNode }) {
         defaultOpenLevel: 1,
         footer: <SidebarFooter />,
       }}
-      containerProps={{ style: docsContainerStyle, className: "zuro-docs-layout" }}
+      containerProps={{ className: "zuro-docs-layout" }}
     >
       {children}
     </DocsLayout>

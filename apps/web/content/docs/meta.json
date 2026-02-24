@@ -7,6 +7,7 @@
         "database",
         "validator",
         "error-handler",
-        "auth"
+        "auth",
+        "mailer"
     ]
 }
