@@ -7,6 +7,8 @@ Stop setting up Express boilerplate from scratch. `zuro-cli init` gives you a pr
 npx zuro-cli init my-app
 ```
 
+![Zuro CLI demo](demo.gif)
+
 ---
 
 ## Why Zuro?
@@ -158,4 +160,3 @@ MIT — use it, fork it, build on it.
 ---
 
 <p align="center">Built by <a href="https://devbybriyan.com">Briyan Patel</a> · <a href="https://zuro-cli.devbybriyan.com">Website</a> · <a href="https://zuro-cli.devbybriyan.com/docs">Docs</a></p>
-
