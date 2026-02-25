@@ -18,6 +18,6 @@ program
 program
     .command("add <module>")
     .description("Add a module to your project")
-    .action(add);
+    .action((module, options) => add(module, options));
 
 program.parse(process.argv);

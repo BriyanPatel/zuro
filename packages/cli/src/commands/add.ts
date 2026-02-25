@@ -172,6 +172,29 @@ function escapeRegex(value: string) {
     return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+function appendImport(source: string, line: string) {
+    if (source.includes(line)) {
+        return { source, inserted: true };
+    }
+
+    const importRegex = /^import .+ from .+;?\s*$/gm;
+    let lastImportIndex = 0;
+    let match;
+
+    while ((match = importRegex.exec(source)) !== null) {
+        lastImportIndex = match.index + match[0].length;
+    }
+
+    if (lastImportIndex <= 0) {
+        return { source, inserted: false };
+    }
+
+    return {
+        source: source.slice(0, lastImportIndex) + `\n${line}` + source.slice(lastImportIndex),
+        inserted: true,
+    };
+}
+
 async function hasEnvVariable(projectRoot: string, key: string): Promise<boolean> {
     const envPath = path.join(projectRoot, ".env");
     if (!await fs.pathExists(envPath)) {
@@ -218,6 +241,14 @@ async function ensureSchemaExport(projectRoot: string, srcDir: string, schemaFil
 
     next += `${exportLine}\n`;
     await fs.writeFile(schemaIndexPath, next);
+}
+
+async function isDocsModuleInstalled(projectRoot: string, srcDir: string): Promise<boolean> {
+    return await fs.pathExists(path.join(projectRoot, srcDir, "lib", "openapi.ts"));
+}
+
+async function isAuthModuleInstalled(projectRoot: string, srcDir: string): Promise<boolean> {
+    return await fs.pathExists(path.join(projectRoot, srcDir, "lib", "auth.ts"));
 }
 
 /**
@@ -298,28 +329,6 @@ async function injectAuthRoutes(projectRoot: string, srcDir: string): Promise<bo
     const appUserImport = `import userRoutes from "./routes/user.routes";`;
 
     let appModified = false;
-
-    const appendImport = (source: string, line: string) => {
-        if (source.includes(line)) {
-            return { source, inserted: true };
-        }
-
-        const importRegex = /^import .+ from .+;?\s*$/gm;
-        let lastImportIndex = 0;
-        let match;
-        while ((match = importRegex.exec(source)) !== null) {
-            lastImportIndex = match.index + match[0].length;
-        }
-
-        if (lastImportIndex <= 0) {
-            return { source, inserted: false };
-        }
-
-        return {
-            source: source.slice(0, lastImportIndex) + `\n${line}` + source.slice(lastImportIndex),
-            inserted: true,
-        };
-    };
 
     for (const importLine of [authHandlerImport, authImport]) {
         const next = appendImport(appContent, importLine);
@@ -420,7 +429,191 @@ async function injectAuthRoutes(projectRoot: string, srcDir: string): Promise<bo
     return true;
 }
 
-export const add = async (moduleName: string) => {
+async function injectDocsRoutes(projectRoot: string, srcDir: string): Promise<boolean> {
+    const routeIndexPath = path.join(projectRoot, srcDir, "routes", "index.ts");
+    const routeImport = `import docsRoutes from "./docs.routes";`;
+    const routeMountPattern = /rootRouter\.use\(\s*["']\/docs["']\s*,\s*docsRoutes\s*\)/;
+
+    if (await fs.pathExists(routeIndexPath)) {
+        let routeContent = await fs.readFile(routeIndexPath, "utf-8");
+        let routeModified = false;
+
+        const importResult = appendImport(routeContent, routeImport);
+        if (!importResult.inserted) {
+            return false;
+        }
+
+        if (importResult.source !== routeContent) {
+            routeContent = importResult.source;
+            routeModified = true;
+        }
+
+        if (!routeMountPattern.test(routeContent)) {
+            const routeSetup = `\n// API docs\nrootRouter.use("/docs", docsRoutes);\n`;
+            const exportMatch = routeContent.match(/export default rootRouter;?\s*$/m);
+            if (!exportMatch || exportMatch.index === undefined) {
+                return false;
+            }
+
+            routeContent = routeContent.slice(0, exportMatch.index) + routeSetup + "\n" + routeContent.slice(exportMatch.index);
+            routeModified = true;
+        }
+
+        if (routeModified) {
+            await fs.writeFile(routeIndexPath, routeContent);
+        }
+
+        return true;
+    }
+
+    const appPath = path.join(projectRoot, srcDir, "app.ts");
+    if (!await fs.pathExists(appPath)) {
+        return false;
+    }
+
+    let appContent = await fs.readFile(appPath, "utf-8");
+    let appModified = false;
+
+    const appImportResult = appendImport(appContent, `import docsRoutes from "./routes/docs.routes";`);
+    if (!appImportResult.inserted) {
+        return false;
+    }
+
+    if (appImportResult.source !== appContent) {
+        appContent = appImportResult.source;
+        appModified = true;
+    }
+
+    const hasMount = /app\.use\(\s*["']\/api\/docs["']\s*,\s*docsRoutes\s*\)/.test(appContent);
+    if (!hasMount) {
+        const setup = `\n// API docs\napp.use("/api/docs", docsRoutes);\n`;
+        const exportMatch = appContent.match(/export default app;?\s*$/m);
+        if (!exportMatch || exportMatch.index === undefined) {
+            return false;
+        }
+
+        appContent = appContent.slice(0, exportMatch.index) + setup + "\n" + appContent.slice(exportMatch.index);
+        appModified = true;
+    }
+
+    if (appModified) {
+        await fs.writeFile(appPath, appContent);
+    }
+
+    return true;
+}
+
+async function injectAuthDocs(projectRoot: string, srcDir: string): Promise<boolean> {
+    const openApiPath = path.join(projectRoot, srcDir, "lib", "openapi.ts");
+    if (!await fs.pathExists(openApiPath)) {
+        return false;
+    }
+
+    const authMarker = "// ZURO_AUTH_DOCS";
+    let content = await fs.readFile(openApiPath, "utf-8");
+    if (content.includes(authMarker)) {
+        return true;
+    }
+
+    const moduleDocsEndMarker = "// ZURO_DOCS_MODULES_END";
+    if (!content.includes(moduleDocsEndMarker)) {
+        return false;
+    }
+
+    const authBlock = `\nconst authSignUpSchema = z.object({
+    email: z.string().email().openapi({ example: "dev@company.com" }),
+    password: z.string().min(8).openapi({ example: "strong-password" }),
+    name: z.string().min(1).optional().openapi({ example: "Dev User" }),
+});
+
+const authSignInSchema = z.object({
+    email: z.string().email().openapi({ example: "dev@company.com" }),
+    password: z.string().min(8).openapi({ example: "strong-password" }),
+});
+
+const authUserSchema = z.object({
+    id: z.string().openapi({ example: "user_123" }),
+    email: z.string().email().openapi({ example: "dev@company.com" }),
+    name: z.string().nullable().openapi({ example: "Dev User" }),
+});
+
+${authMarker}
+registry.registerPath({
+    method: "post",
+    path: "/api/auth/sign-up/email",
+    tags: ["Auth"],
+    summary: "Register using email and password",
+    request: {
+        body: {
+            content: {
+                "application/json": {
+                    schema: authSignUpSchema,
+                },
+            },
+        },
+    },
+    responses: {
+        200: { description: "Registration successful" },
+    },
+});
+
+registry.registerPath({
+    method: "post",
+    path: "/api/auth/sign-in/email",
+    tags: ["Auth"],
+    summary: "Sign in using email and password",
+    request: {
+        body: {
+            content: {
+                "application/json": {
+                    schema: authSignInSchema,
+                },
+            },
+        },
+    },
+    responses: {
+        200: { description: "Sign in successful" },
+        401: { description: "Invalid credentials" },
+    },
+});
+
+registry.registerPath({
+    method: "post",
+    path: "/api/auth/sign-out",
+    tags: ["Auth"],
+    summary: "Sign out current user",
+    responses: {
+        200: { description: "Sign out successful" },
+    },
+});
+
+registry.registerPath({
+    method: "get",
+    path: "/api/users/me",
+    tags: ["Auth"],
+    summary: "Get current authenticated user",
+    security: [{ bearerAuth: [] }],
+    responses: {
+        200: {
+            description: "Current user",
+            content: {
+                "application/json": {
+                    schema: z.object({ user: authUserSchema }),
+                },
+            },
+        },
+        401: { description: "Not authenticated" },
+    },
+});
+`;
+
+    content = content.replace(moduleDocsEndMarker, `${authBlock}\n${moduleDocsEndMarker}`);
+    await fs.writeFile(openApiPath, content);
+
+    return true;
+}
+
+export const add = async (moduleName: string, options: AddCommandOptions = {}) => {
     const projectRoot = process.cwd();
     const projectConfig = await readZuroConfig(projectRoot);
     if (!projectConfig) {
@@ -447,6 +640,7 @@ export const add = async (moduleName: string) => {
     let customSmtpVars: Record<string, string> | undefined;
     let usedDefaultSmtp = false;
     let mailerProvider: "smtp" | "resend" = "smtp";
+    let shouldInstallDocsForAuth = false;
 
     if (resolvedModuleName === "database") {
         const variantResponse = await prompts({
@@ -627,6 +821,29 @@ export const add = async (moduleName: string) => {
         }
     }
 
+    if (resolvedModuleName === "auth") {
+        const docsInstalled = await isDocsModuleInstalled(projectRoot, srcDir);
+        if (!docsInstalled) {
+            if (options.yes) {
+                shouldInstallDocsForAuth = true;
+            } else {
+                const docsResponse = await prompts({
+                    type: "confirm",
+                    name: "installDocs",
+                    message: "Install API docs module (Scalar + OpenAPI) too?",
+                    initial: true,
+                });
+
+                if (docsResponse.installDocs === undefined) {
+                    console.log(chalk.yellow("Operation cancelled."));
+                    return;
+                }
+
+                shouldInstallDocsForAuth = docsResponse.installDocs;
+            }
+        }
+    }
+
     const pm = resolvePackageManager(projectRoot);
     const spinner = ora(`Checking registry for ${resolvedModuleName}...`).start();
     let currentStep = "package manager preflight";
@@ -744,6 +961,17 @@ export const add = async (moduleName: string) => {
             } else {
                 spinner.warn("Could not configure routes automatically");
             }
+
+            const docsInstalled = await isDocsModuleInstalled(projectRoot, srcDir);
+            if (docsInstalled) {
+                spinner.start("Adding auth endpoints to API docs...");
+                const authDocsInjected = await injectAuthDocs(projectRoot, srcDir);
+                if (authDocsInjected) {
+                    spinner.succeed("Auth endpoints added to API docs");
+                } else {
+                    spinner.warn("Could not update API docs automatically");
+                }
+            }
         }
 
         if (resolvedModuleName === "error-handler") {
@@ -753,6 +981,27 @@ export const add = async (moduleName: string) => {
                 spinner.succeed("Error handler configured in app.ts");
             } else {
                 spinner.warn("Could not find app.ts - error handler needs manual setup");
+            }
+        }
+
+        if (resolvedModuleName === "docs") {
+            spinner.start("Configuring docs routes...");
+            const injected = await injectDocsRoutes(projectRoot, srcDir);
+            if (injected) {
+                spinner.succeed("Docs routes configured");
+            } else {
+                spinner.warn("Could not configure docs routes automatically");
+            }
+
+            const authInstalled = await isAuthModuleInstalled(projectRoot, srcDir);
+            if (authInstalled) {
+                spinner.start("Adding auth endpoints to API docs...");
+                const authDocsInjected = await injectAuthDocs(projectRoot, srcDir);
+                if (authDocsInjected) {
+                    spinner.succeed("Auth endpoints added to API docs");
+                } else {
+                    spinner.warn("Could not update API docs automatically");
+                }
             }
         }
 
@@ -830,6 +1079,16 @@ export const add = async (moduleName: string) => {
             } else {
                 console.log(chalk.yellow("ℹ Review SMTP configuration in .env to ensure values are correct."));
             }
+        }
+
+        if (resolvedModuleName === "docs") {
+            console.log(chalk.yellow("ℹ API docs available at: /api/docs"));
+            console.log(chalk.yellow("ℹ OpenAPI spec available at: /api/docs/openapi.json"));
+        }
+
+        if (resolvedModuleName === "auth" && shouldInstallDocsForAuth) {
+            console.log(chalk.blue("\nℹ Installing API docs module..."));
+            await add("docs", { yes: true });
         }
     } catch (error) {
         spinner.fail(chalk.red(`Failed during ${currentStep}.`));

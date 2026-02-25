@@ -14,6 +14,7 @@ const BLOCK_SIGNATURES: Record<string, string> = {
     logger: "lib/logger.ts",
     auth: "lib/auth.ts",
     mailer: "lib/mailer.ts",
+    docs: "lib/openapi.ts",
 };
 
 /**

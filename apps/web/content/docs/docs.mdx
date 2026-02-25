@@ -1,0 +1,99 @@
+---
+title: API Docs
+description: Add Scalar API docs with OpenAPI generated from Zod
+---
+
+# API Docs
+
+Add interactive API docs with Scalar and OpenAPI generation from Zod schemas.
+
+---
+
+## Install
+
+<Tabs items={['npm', 'pnpm', 'bun']}>
+  <Tab value="npm">
+  ```bash
+  npx zuro-cli add docs
+  ```
+  </Tab>
+  <Tab value="pnpm">
+  ```bash
+  pnpm dlx zuro-cli add docs
+  ```
+  </Tab>
+  <Tab value="bun">
+  ```bash
+  bun x zuro-cli add docs
+  ```
+  </Tab>
+</Tabs>
+
+---
+
+## Endpoints
+
+- Scalar UI: `http://localhost:3000/api/docs`
+- OpenAPI JSON: `http://localhost:3000/api/docs/openapi.json`
+
+---
+
+## Generated Files
+
+<Files>
+  <Folder name="src" defaultOpen>
+    <Folder name="lib" defaultOpen>
+      <File name="openapi.ts" />
+    </Folder>
+    <Folder name="routes" defaultOpen>
+      <File name="docs.routes.ts" />
+    </Folder>
+  </Folder>
+</Files>
+
+---
+
+## How It Works
+
+- `src/lib/openapi.ts` creates an OpenAPI document using Zod.
+- `src/routes/docs.routes.ts` serves OpenAPI JSON and Scalar UI.
+- Zuro injects docs routing into your API router automatically.
+
+---
+
+## Add Your Own Zod Docs
+
+Inside `src/lib/openapi.ts`, register your route with Zod schemas:
+
+```ts
+const createPostSchema = z.object({
+  title: z.string().min(1),
+  content: z.string().min(1),
+});
+
+registry.registerPath({
+  method: "post",
+  path: "/api/posts",
+  tags: ["Posts"],
+  request: {
+    body: {
+      content: {
+        "application/json": {
+          schema: createPostSchema,
+        },
+      },
+    },
+  },
+  responses: {
+    201: { description: "Post created" },
+  },
+});
+```
+
+---
+
+## Auth Integration
+
+- If auth is already installed, `add docs` also adds auth endpoints to OpenAPI.
+- If docs already exists, `add auth` updates OpenAPI docs automatically.
+- If docs is missing, `add auth` asks whether to install docs too (default: yes).

@@ -184,6 +184,29 @@
       ],
       "devDependencies": []
     },
+    "docs": {
+      "type": "block",
+      "files": [
+        {
+          "path": "express/lib/openapi.ts",
+          "target": "lib/openapi.ts",
+          "type": "library"
+        },
+        {
+          "path": "express/routes/docs.routes.ts",
+          "target": "routes/docs.routes.ts",
+          "type": "library"
+        }
+      ],
+      "moduleDependencies": [
+        "core"
+      ],
+      "dependencies": [
+        "@asteasolutions/zod-to-openapi",
+        "@scalar/express-api-reference"
+      ],
+      "devDependencies": []
+    },
     "mailer": {
       "type": "block",
       "files": [
