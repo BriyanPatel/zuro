@@ -3,15 +3,13 @@ title: Validator
 description: Simple request validation with Zod
 ---
 
-# Validator
-
-Add a validation middleware for `body`, `query`, and `params` using Zod schemas.
+Validate `body`, `query`, and `params` with Zod schemas before your route handlers run.
 
 ---
 
 ## Installation
 
-<Tabs items={["npm", "pnpm", "bun"]}>
+<Tabs items={['npm', 'pnpm', 'bun']}>
   <Tab value="npm">
 
 ```bash
@@ -37,28 +35,14 @@ bun x zuro-cli add validator
 
 ---
 
-## What Gets Added
-
-<Files>
-  <Folder name="src" defaultOpen>
-    <Folder name="middleware" defaultOpen>
-      <File name="validate.ts" />
-    </Folder>
-  </Folder>
-</Files>
-
-Dependency installed: `zod`
-
----
-
 ## Usage
 
-### Basic example
+**Validate request body:**
 
 ```ts
 import { Router } from "express";
 import { z } from "zod";
-import { validate } from "./middleware/validate";
+import { validate } from "../middleware/validate";
 
 const router = Router();
 
@@ -75,7 +59,7 @@ router.post("/users", validate(createUserSchema), (req, res) => {
 });
 ```
 
-### Query + Params example
+**Validate query and params:**
 
 ```ts
 const listPostsSchema = z.object({
@@ -95,31 +79,7 @@ router.get("/users/:userId/posts", validate(listPostsSchema), (req, res) => {
 });
 ```
 
----
-
-## Middleware API
-
-```ts
-validate(schema);
-```
-
-Your schema should validate this shape:
-
-```ts
-{
-  body?: unknown;
-  query?: unknown;
-  params?: unknown;
-}
-```
-
----
-
-## Behavior
-
-1. Validates request input with Zod.
-2. Writes parsed values back to `req.body`, `req.query`, and `req.params`.
-3. Returns `422` on validation errors:
+If validation fails, the client gets a `422`:
 
 ```json
 {
@@ -130,40 +90,43 @@ Your schema should validate this shape:
 }
 ```
 
-4. Passes non-Zod errors to `next(error)`.
-
 ---
 
-## Works with Error Handler
+## Configuration
 
-Validator returns validation responses directly by default.
+No environment variables needed. The validator works with `zod` which is already included in core.
 
-If anything else throws, it goes to your error middleware:
-
-```bash
-npx zuro-cli add error-handler
-```
+Parsed values are written back to `req` automatically — so Zod defaults and coercion just work.
 
 ---
 
 ## Troubleshooting
 
-- `Cannot find module './middleware/validate'`: run the install command inside a Zuro project.
-- `422 Validation failed`: check your request body matches the Zod schema fields and types.
-- Schema not validating `query`/`params`: make sure your schema wraps them in `z.object({ query: ..., params: ... })`.
+- **422 Validation failed** — check that your request matches the Zod schema fields and types
+- **Query/params not validating** — wrap them in `z.object({ query: ..., params: ... })`
+- **Non-Zod errors** — they pass through to your error handler middleware
 
 ---
 
 ## Next Steps
 
 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
-  <a href="/docs/error-handler" className="block border border-border rounded-xl p-5 bg-card hover:border-green-500/50 transition-colors no-underline">
+  <a
+    href="/docs/error-handler"
+    className="block border border-border rounded-xl p-5 bg-card hover:border-green-500/50 transition-colors no-underline"
+  >
     <h3 className="font-bold text-foreground mb-1">→ Add Error Handler</h3>
-    <p className="text-sm text-muted-foreground">Centralized API error responses</p>
+    <p className="text-sm text-muted-foreground">
+      Centralized API error responses
+    </p>
   </a>
-
-  <a href="/docs/auth" className="block border border-border rounded-xl p-5 bg-card hover:border-green-500/50 transition-colors no-underline">
+  <a
+    href="/docs/auth"
+    className="block border border-border rounded-xl p-5 bg-card hover:border-green-500/50 transition-colors no-underline"
+  >
     <h3 className="font-bold text-foreground mb-1">→ Add Auth</h3>
-    <p className="text-sm text-muted-foreground">User auth and protected routes</p>
+    <p className="text-sm text-muted-foreground">
+      User auth and protected routes
+    </p>
   </a>
 </div>

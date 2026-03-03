@@ -3,15 +3,13 @@ title: Database
 description: Add PostgreSQL or MySQL with Drizzle in one command
 ---
 
-# Database
-
-Scaffold Drizzle ORM with a PostgreSQL or MySQL client into your Zuro project. Installs dependencies, generates DB files, and configures environment variables.
+Scaffold [Drizzle ORM](https://orm.drizzle.team) with PostgreSQL or MySQL into your project.
 
 ---
 
 ## Installation
 
-<Tabs items={["npm", "pnpm", "bun"]}>
+<Tabs items={['npm', 'pnpm', 'bun']}>
   <Tab value="npm">
 
 ```bash
@@ -35,185 +33,98 @@ bun x zuro-cli add database
   </Tab>
 </Tabs>
 
-You can also skip the dialect picker by specifying it directly: `add database-pg` or `add database-mysql`.
-
-Aliases like `pg`, `postgres`, `postgresql`, `mysql` also work.
-
----
-
-## What Gets Added
-
-<Files>
-  <Folder name="src" defaultOpen>
-    <Folder name="db" defaultOpen>
-      <File name="index.ts" />
-      <Folder name="schema" defaultOpen>
-        <File name="index.ts" />
-      </Folder>
-    </Folder>
-    <File name="env.ts" />
-  </Folder>
-  <File name="drizzle.config.ts" />
-  <File name=".env" />
-</Files>
-
-| Dialect    | Runtime deps            | Dev deps                   |
-| ---------- | ----------------------- | -------------------------- |
-| PostgreSQL | `drizzle-orm`, `pg`     | `drizzle-kit`, `@types/pg` |
-| MySQL      | `drizzle-orm`, `mysql2` | `drizzle-kit`              |
-
----
-
-## Interactive Flow
-
-<Steps>
-<Step>
-### Pick a Dialect
-
-```text
-? Which database dialect?
-❯ PostgreSQL
-  MySQL
-```
-
-</Step>
-
-<Step>
-### Enter Database URL
-
-```text
-Tip: Leave blank to use postgresql://postgres@localhost:5432/mydb
-? Database URL
-```
-
-Defaults:
-
-- PostgreSQL: `postgresql://postgres@localhost:5432/mydb`
-- MySQL: `mysql://root@localhost:3306/mydb`
-
-</Step>
-
-<Step>
-### Done
-
-CLI installs dependencies, generates files, and configures `.env` and `env.ts` automatically.
-
-</Step>
-</Steps>
+You can skip the dialect prompt: `add database-pg` or `add database-mysql`.
 
 ---
 
 ## Usage
 
-<Steps>
-<Step>
-### Create a schema file
+**1. Define a schema:**
 
 ```ts title="src/db/schema/posts.ts"
-import { pgTable, text } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp } from "drizzle-orm/pg-core";
 
 export const posts = pgTable("posts", {
   id: text("id").primaryKey(),
   title: text("title").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
 });
 ```
 
-</Step>
-
-<Step>
-### Export schema
+**2. Export it:**
 
 ```ts title="src/db/schema/index.ts"
 export * from "./posts";
 ```
 
-</Step>
-
-<Step>
-### Run migrations
+**3. Run migrations:**
 
 ```bash
 npx drizzle-kit generate
 npx drizzle-kit migrate
 ```
 
-</Step>
-</Steps>
+**4. Query in a route:**
+
+```ts
+import { db } from "../db";
+import { posts } from "../db/schema";
+
+router.get("/posts", async (req, res) => {
+  const allPosts = await db.select().from(posts);
+  res.json(allPosts);
+});
+```
 
 ---
 
-## Environment Variables
+## Configuration
 
-When you add a database module:
+Your `.env` gets a `DATABASE_URL` automatically:
 
-- `.env` gets `DATABASE_URL=...`
-- existing `DATABASE_URL` is updated to your new value
-- `env.ts` gets `DATABASE_URL: z.string().url()`
+```bash
+# PostgreSQL
+DATABASE_URL=postgresql://postgres@localhost:5432/mydb
 
----
+# MySQL
+DATABASE_URL=mysql://root@localhost:3306/mydb
+```
 
-## Dialect Switching
-
-If your project already has one DB dialect and you add the other:
-
-1. Zuro warns before overwrite.
-2. Asks for confirmation.
-3. Creates a backup in `.zuro/backups/...` before replacing DB files.
-
----
-
-## URL Examples
-
-| Database                 | URL                                                            |
-| ------------------------ | -------------------------------------------------------------- |
-| PostgreSQL local         | `postgresql://postgres@localhost:5432/mydb`                    |
-| PostgreSQL with password | `postgresql://user:password@localhost:5432/mydb`               |
-| MySQL local              | `mysql://root@localhost:3306/mydb`                             |
-| MySQL with password      | `mysql://root:password@localhost:3306/mydb`                    |
-| Neon                     | `postgresql://user:pass@ep-xxx.neon.tech/mydb?sslmode=require` |
-| PlanetScale              | `mysql://user:pass@aws.connect.psdb.cloud/mydb?ssl=...`        |
+| Provider    | URL Format                                                     |
+| ----------- | -------------------------------------------------------------- |
+| Neon        | `postgresql://user:pass@ep-xxx.neon.tech/mydb?sslmode=require` |
+| PlanetScale | `mysql://user:pass@aws.connect.psdb.cloud/mydb?ssl=...`        |
+| Supabase    | `postgresql://postgres:pass@db.xxx.supabase.co:5432/postgres`  |
 
 ---
 
 ## Troubleshooting
 
-- `Invalid database URL`: use a valid URL format (`postgresql://...` or `mysql://...`).
-- `Package manager not installed`: install your selected PM or use npm.
-- `Failed during registry fetch`: verify internet connection and retry.
-- `Module not found`: run the install command inside a Zuro project.
+- **Invalid database URL** — must start with `postgresql://` or `mysql://`
+- **Migration errors** — check that your database is running and `DATABASE_URL` is correct
+- **Switching dialects** — Zuro creates a backup in `.zuro/backups/` before replacing files
 
 ---
 
 ## Next Steps
 
 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
-  <a href="/docs/auth" className="block border border-border rounded-xl p-5 bg-card hover:border-green-500/50 transition-colors no-underline">
+  <a
+    href="/docs/auth"
+    className="block border border-border rounded-xl p-5 bg-card hover:border-green-500/50 transition-colors no-underline"
+  >
     <h3 className="font-bold text-foreground mb-1">→ Add Auth</h3>
-    <div className="text-sm text-muted-foreground">User signup, login, and sessions</div>
+    <p className="text-sm text-muted-foreground">
+      User signup, login, and sessions
+    </p>
   </a>
-
-<a
-  href="/docs/error-handler"
-  className="block border border-border rounded-xl p-5 bg-card hover:border-green-500/50 transition-colors no-underline"
->
-  <h3 className="font-bold text-foreground mb-1">→ Add Error Handler</h3>
-  <div className="text-sm text-muted-foreground">
-    Consistent API error responses
-  </div>
-</a>
-
-<a
-  href="/docs/validator"
-  className="block border border-border rounded-xl p-5 bg-card hover:border-green-500/50 transition-colors no-underline"
->
-  <h3 className="font-bold text-foreground mb-1">→ Add Validator</h3>
-  <div className="text-sm text-muted-foreground">
-    Request validation with Zod
-  </div>
-</a>
-
-  <a href="/docs/mailer" className="block border border-border rounded-xl p-5 bg-card hover:border-green-500/50 transition-colors no-underline">
-    <h3 className="font-bold text-foreground mb-1">→ Add Mailer</h3>
-    <div className="text-sm text-muted-foreground">Send emails with SMTP or Resend</div>
+  <a
+    href="/docs/error-handler"
+    className="block border border-border rounded-xl p-5 bg-card hover:border-green-500/50 transition-colors no-underline"
+  >
+    <h3 className="font-bold text-foreground mb-1">→ Add Error Handler</h3>
+    <p className="text-sm text-muted-foreground">
+      Consistent API error responses
+    </p>
   </a>
 </div>

@@ -3,9 +3,7 @@ title: Mailer
 description: Send emails from your Zuro app using SMTP or Resend
 ---
 
-# Mailer
-
-Add email sending with a single `sendMail()` function. Supports SMTP (Nodemailer) and Resend out of the box.
+Send emails with a single `sendMail()` function. Supports SMTP (Nodemailer) and Resend.
 
 ---
 
@@ -35,85 +33,25 @@ bun x zuro-cli add mailer
   </Tab>
 </Tabs>
 
-You'll be prompted to choose between **SMTP (Nodemailer)** or **Resend**, then enter credentials. Leave blank to use placeholders and configure later in `.env`.
-
----
-
-## What Gets Added
-
-<Files>
-  <Folder name="src" defaultOpen>
-    <Folder name="lib" defaultOpen>
-      <File name="mailer.ts" />
-      <Folder name="mail-templates" defaultOpen>
-        <File name="index.ts" />
-        <File name="welcome.ts" />
-      </Folder>
-    </Folder>
-  </Folder>
-  <File name=".env" />
-</Files>
-
-Dependencies installed:
-
-- **SMTP**: `nodemailer`, `@types/nodemailer`
-- **Resend**: `resend`
-
-Auto-installs `error-handler` if not already present.
-
----
-
-## Configuration
-
-### SMTP (Nodemailer)
-
-```bash
-SMTP_HOST=smtp.example.com
-SMTP_PORT=587
-SMTP_USER=your-email@example.com
-SMTP_PASS=your-password
-MAIL_FROM=noreply@example.com
-```
-
-### Resend
-
-```bash
-RESEND_API_KEY=re_your_api_key
-MAIL_FROM=onboarding@resend.dev
-```
-
-All fields are validated in `env.ts` using Zod. Update the placeholder values before sending emails.
-
-### Common SMTP Providers
-
-| Provider           | Host                       | Port   |
-| ------------------ | -------------------------- | ------ |
-| Gmail              | `smtp.gmail.com`           | `587`  |
-| Outlook            | `smtp.office365.com`       | `587`  |
-| Mailtrap (testing) | `sandbox.smtp.mailtrap.io` | `2525` |
-
-<Callout type="info">
-  For Gmail, enable "App Passwords" in your Google Account settings. Regular
-  passwords won't work with SMTP.
-</Callout>
+You'll be prompted to choose **SMTP** or **Resend**, then enter your credentials.
 
 ---
 
 ## Usage
 
-### Send with raw HTML
+**Send an email:**
 
 ```ts
-import { sendMail } from "./lib/mailer";
+import { sendMail } from "../lib/mailer";
 
 await sendMail({
   to: "user@example.com",
-  subject: "Hello!",
+  subject: "Welcome!",
   html: "<h1>Welcome to our app</h1>",
 });
 ```
 
-### Send with a template
+**Send with a template:**
 
 ```ts
 await sendMail({
@@ -124,7 +62,7 @@ await sendMail({
 });
 ```
 
-### Send to multiple recipients
+**Send to multiple recipients:**
 
 ```ts
 await sendMail({
@@ -134,81 +72,82 @@ await sendMail({
 });
 ```
 
----
-
-## Creating Templates
-
-Templates live in `src/lib/mail-templates/`. Each template is a function that returns an HTML string.
-
-<Steps>
-<Step>
-### Create a template file
+**Create a custom template:**
 
 ```ts title="src/lib/mail-templates/reset-password.ts"
 export const resetPassword = (data: Record<string, unknown>) => {
   const link = typeof data.link === "string" ? data.link : "#";
-
   return `
     <h1>Reset Your Password</h1>
-    <p>Click the link below to reset your password:</p>
     <a href="${link}">Reset Password</a>
   `;
 };
 ```
 
-</Step>
+Register it in `src/lib/mail-templates/index.ts`:
 
-<Step>
-### Register it
-
-```ts title="src/lib/mail-templates/index.ts"
+```ts
 import { welcome } from "./welcome";
 import { resetPassword } from "./reset-password";
 
-export const templates = {
-  welcome,
-  "reset-password": resetPassword,
-};
+export const templates = { welcome, "reset-password": resetPassword };
 ```
 
-</Step>
+---
 
-<Step>
-### Use it
+## Configuration
 
-```ts
-await sendMail({
-  to: "user@example.com",
-  subject: "Reset your password",
-  template: "reset-password",
-  data: { link: "https://myapp.com/reset?token=abc123" },
-});
+### SMTP
+
+```bash
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=your-email@gmail.com
+SMTP_PASS=your-app-password
+MAIL_FROM=noreply@yourapp.com
 ```
 
-</Step>
-</Steps>
+### Resend
+
+```bash
+RESEND_API_KEY=re_your_api_key
+MAIL_FROM=onboarding@resend.dev
+```
+
+<Callout type="info">
+  For Gmail, enable "App Passwords" in your Google Account settings. Regular
+  passwords won't work.
+</Callout>
 
 ---
 
 ## Troubleshooting
 
-- `Email template 'x' not found`: make sure the template is exported in `src/lib/mail-templates/index.ts`.
-- `SMTP connection refused`: verify `SMTP_HOST` and `SMTP_PORT` in `.env`. Most providers use port `587`.
-- `Placeholder SMTP values`: update dummy values in `.env` before sending real emails.
-- `Module 'mailer' not found`: run the install command inside a Zuro project.
+- **`Email template 'x' not found`** — make sure it's exported in `src/lib/mail-templates/index.ts`
+- **SMTP connection refused** — check `SMTP_HOST` and `SMTP_PORT` in `.env`
+- **Placeholder values** — update dummy values in `.env` before sending real emails
 
 ---
 
 ## Next Steps
 
 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
-  <a href="/docs/error-handler" className="block border border-border rounded-xl p-5 bg-card hover:border-green-500/50 transition-colors no-underline">
+  <a
+    href="/docs/error-handler"
+    className="block border border-border rounded-xl p-5 bg-card hover:border-green-500/50 transition-colors no-underline"
+  >
     <h3 className="font-bold text-foreground mb-1">→ Error Handler</h3>
-    <p className="text-sm text-muted-foreground">Understand the error classes used by mailer</p>
+    <p className="text-sm text-muted-foreground">
+      Understand the error classes used by mailer
+    </p>
   </a>
-
-  <a href="/docs/auth" className="block border border-border rounded-xl p-5 bg-card hover:border-green-500/50 transition-colors no-underline">
+  <a
+    href="/docs/auth"
+    className="block border border-border rounded-xl p-5 bg-card hover:border-green-500/50 transition-colors no-underline"
+  >
     <h3 className="font-bold text-foreground mb-1">→ Add Auth</h3>
-    <p className="text-sm text-muted-foreground">User signup, login, and sessions</p>
+    <p className="text-sm text-muted-foreground">
+      User signup, login, and sessions
+    </p>
   </a>
 </div>
