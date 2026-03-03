@@ -5,6 +5,10 @@ export interface ZuroConfig {
   name?: string;
   pm?: string;
   srcDir?: string;
+  database?: {
+    orm?: "drizzle" | "prisma";
+    dialect?: "postgresql" | "mysql";
+  };
 }
 
 function sanitizeConfig(input: unknown): ZuroConfig {
@@ -25,6 +29,23 @@ function sanitizeConfig(input: unknown): ZuroConfig {
 
   if (typeof raw.srcDir === "string") {
     config.srcDir = raw.srcDir;
+  }
+
+  if (raw.database && typeof raw.database === "object") {
+    const dbRaw = raw.database as Record<string, unknown>;
+    const database: NonNullable<ZuroConfig["database"]> = {};
+
+    if (dbRaw.orm === "drizzle" || dbRaw.orm === "prisma") {
+      database.orm = dbRaw.orm;
+    }
+
+    if (dbRaw.dialect === "postgresql" || dbRaw.dialect === "mysql") {
+      database.dialect = dbRaw.dialect;
+    }
+
+    if (database.orm || database.dialect) {
+      config.database = database;
+    }
   }
 
   return config;

@@ -1,7 +1,9 @@
-# Zuro — Backend scaffolding for real projects
+# Zuro — Production-ready backend modules you own
 
 
-Stop setting up Express boilerplate from scratch. `zuro-cli init` gives you a production-ready Express + TypeScript backend in 60 seconds. Then add auth, database, email, and more as modules — one command at a time.
+Production-ready backend modules you own. No framework lock-in.
+
+`zuro-cli init` gives you a production-ready Express + TypeScript backend in 60 seconds. Then add auth, database, email, and more as modules — one command at a time.
 
 ```bash
 npx zuro-cli init my-app
@@ -13,7 +15,7 @@ npx zuro-cli init my-app
 
 ## Why Zuro?
 
-Every backend project starts the same way. You spend 2 hours configuring TypeScript, wiring up security middleware, setting up logging, and copy-pasting `.env` validation before writing a single route.
+Every backend project starts the same way. You spend 2 hours configuring TypeScript, wiring security middleware, setting up logging, and validating `.env` before writing a single route.
 
 Zuro skips all of that. You get clean, readable TypeScript you fully own — no hidden runtime, no framework lock-in, no magic.
 
@@ -98,9 +100,9 @@ Zuro doesn't reinvent the wheel. Every module uses libraries you already know an
 
 ## Built For
 
-- **Hackathon teams** — ship auth, database, and email in under 2 minutes, spend your 48 hours on the actual product
-- **College & capstone projects** — production-grade architecture without the setup tax
-- **Bootcamps & cohorts** — give every student the same clean, consistent baseline
+- **Product teams** — standardize backend foundations across services without framework lock-in
+- **Technical founders** — ship faster without sacrificing long-term code ownership
+- **Freelancers and agencies** — deliver production-ready backends with consistent architecture
 
 ---
 

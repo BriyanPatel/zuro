@@ -9,16 +9,21 @@ import { updateEnvFile, updateEnvSchema, ENV_CONFIGS } from "../utils/env-manage
 import { resolveSafeTargetPath } from "../utils/paths";
 import { escapeRegex } from "../utils/code-inject";
 import chalk from "chalk";
-import { readZuroConfig } from "../utils/config";
+import { readZuroConfig, writeZuroConfig } from "../utils/config";
 import { showNonZuroProjectMessage, showInitFirstMessage } from "../utils/project-guard";
 
 import {
     parseDatabaseDialect,
     isDatabaseModule,
+    isDrizzleDatabaseModule,
     ensureSchemaExport,
     printDatabaseHints,
     promptDatabaseConfig,
+    detectInstalledDatabaseDialect,
     type DatabaseModuleName,
+    type DatabaseOrm,
+    type DatabaseDialect,
+    getDatabaseSelection,
 } from "../handlers/database.handler";
 import {
     injectAuthRoutes,
@@ -119,6 +124,8 @@ export const add = async (moduleName: string, options: AddCommandOptions = {}) =
     let customDbUrl: string | undefined;
     let usedDefaultDbUrl = false;
     let databaseBackupPath: string | null = null;
+    let selectedDatabaseOrm: DatabaseOrm | null = null;
+    let selectedDatabaseDialect: DatabaseDialect | null = null;
     let generatedAuthSecret = false;
     let authDatabaseDialect: DatabaseModuleName | null = null;
     let customSmtpVars: Record<string, string> | undefined;
@@ -131,6 +138,8 @@ export const add = async (moduleName: string, options: AddCommandOptions = {}) =
         if (!result) return;
 
         resolvedModuleName = result.resolvedModuleName;
+        selectedDatabaseOrm = result.selectedOrm;
+        selectedDatabaseDialect = result.selectedDialect;
         customDbUrl = result.customDbUrl;
         usedDefaultDbUrl = result.usedDefaultDbUrl;
         databaseBackupPath = result.databaseBackupPath;
@@ -178,6 +187,15 @@ export const add = async (moduleName: string, options: AddCommandOptions = {}) =
         const moduleDeps = module.moduleDependencies || [];
         currentStep = "module dependency resolution";
         await resolveDependencies(moduleDeps, projectRoot);
+
+        if (resolvedModuleName === "auth") {
+            authDatabaseDialect = await detectInstalledDatabaseDialect(projectRoot, srcDir);
+            if (authDatabaseDialect === "database-prisma-pg" || authDatabaseDialect === "database-prisma-mysql") {
+                spinner.fail("Auth module currently supports Drizzle-based database setup only.");
+                console.log(chalk.yellow("ℹ Install auth after switching database ORM to Drizzle."));
+                return;
+            }
+        }
 
         currentStep = "dependency installation";
         spinner.start("Installing dependencies...");
@@ -236,7 +254,7 @@ export const add = async (moduleName: string, options: AddCommandOptions = {}) =
                 expectedSize,
             });
 
-            if (isDatabaseModule(resolvedModuleName) && file.target === "../drizzle.config.ts") {
+            if (isDrizzleDatabaseModule(resolvedModuleName) && file.target === "../drizzle.config.ts") {
                 const normalizedSrcDir = srcDir.replace(/\\/g, "/");
                 content = content.replace(
                     /schema:\s*["'][^"']+["']/,
@@ -361,6 +379,23 @@ export const add = async (moduleName: string, options: AddCommandOptions = {}) =
             await updateEnvSchema(projectRoot, srcDir, envConfig.schemaFields);
 
             spinner.succeed("Environment configured");
+        }
+
+        if (isDatabaseModule(resolvedModuleName)) {
+            const selected = getDatabaseSelection(resolvedModuleName);
+            const orm = selectedDatabaseOrm ?? selected.orm;
+            const dialect = selectedDatabaseDialect ?? selected.dialect;
+
+            const latestConfig = await readZuroConfig(projectRoot);
+            if (latestConfig) {
+                await writeZuroConfig(projectRoot, {
+                    ...latestConfig,
+                    database: {
+                        orm,
+                        dialect,
+                    },
+                });
+            }
         }
 
         // ── Success output & hints ──────────────────────────────────

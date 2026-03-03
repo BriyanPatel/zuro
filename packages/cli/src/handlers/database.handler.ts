@@ -4,11 +4,30 @@ import prompts from "prompts";
 import chalk from "chalk";
 import { escapeRegex } from "../utils/code-inject";
 
-export type DatabaseModuleName = "database-pg" | "database-mysql";
+export type DatabaseOrm = "drizzle" | "prisma";
+export type DatabaseDialect = "postgresql" | "mysql";
+export type DatabaseModuleName =
+    | "database-pg"
+    | "database-mysql"
+    | "database-prisma-pg"
+    | "database-prisma-mysql";
+
+const DATABASE_MODULE_MAP: Record<DatabaseOrm, Record<DatabaseDialect, DatabaseModuleName>> = {
+    drizzle: {
+        postgresql: "database-pg",
+        mysql: "database-mysql",
+    },
+    prisma: {
+        postgresql: "database-prisma-pg",
+        mysql: "database-prisma-mysql",
+    },
+};
 
 export const DEFAULT_DATABASE_URLS: Record<DatabaseModuleName, string> = {
     "database-pg": "postgresql://postgres@localhost:5432/mydb",
     "database-mysql": "mysql://root@localhost:3306/mydb",
+    "database-prisma-pg": "postgresql://postgres@localhost:5432/mydb",
+    "database-prisma-mysql": "mysql://root@localhost:3306/mydb",
 };
 
 export function parseDatabaseDialect(value?: string): DatabaseModuleName | null {
@@ -17,22 +36,97 @@ export function parseDatabaseDialect(value?: string): DatabaseModuleName | null 
         return null;
     }
 
-    if (normalized === "pg" || normalized === "postgres" || normalized === "postgresql" || normalized === "database-pg") {
+    if (
+        normalized === "pg"
+        || normalized === "postgres"
+        || normalized === "postgresql"
+        || normalized === "database-pg"
+        || normalized === "drizzle-pg"
+        || normalized === "drizzle-postgres"
+        || normalized === "database-drizzle-pg"
+    ) {
         return "database-pg";
     }
 
-    if (normalized === "mysql" || normalized === "database-mysql") {
+    if (
+        normalized === "mysql"
+        || normalized === "database-mysql"
+        || normalized === "drizzle-mysql"
+        || normalized === "database-drizzle-mysql"
+    ) {
         return "database-mysql";
+    }
+
+    if (
+        normalized === "database-prisma-pg"
+        || normalized === "prisma-pg"
+        || normalized === "prisma-postgres"
+        || normalized === "prisma-postgresql"
+        || normalized === "database-prisma"
+    ) {
+        return "database-prisma-pg";
+    }
+
+    if (normalized === "database-prisma-mysql" || normalized === "prisma-mysql") {
+        return "database-prisma-mysql";
     }
 
     return null;
 }
 
 export function isDatabaseModule(moduleName: string): moduleName is DatabaseModuleName {
+    return (
+        moduleName === "database-pg"
+        || moduleName === "database-mysql"
+        || moduleName === "database-prisma-pg"
+        || moduleName === "database-prisma-mysql"
+    );
+}
+
+export function isDrizzleDatabaseModule(moduleName: string): moduleName is "database-pg" | "database-mysql" {
     return moduleName === "database-pg" || moduleName === "database-mysql";
 }
 
+export function getDatabaseSelection(moduleName: DatabaseModuleName): { orm: DatabaseOrm; dialect: DatabaseDialect } {
+    if (moduleName === "database-pg") {
+        return { orm: "drizzle", dialect: "postgresql" };
+    }
+
+    if (moduleName === "database-mysql") {
+        return { orm: "drizzle", dialect: "mysql" };
+    }
+
+    if (moduleName === "database-prisma-pg") {
+        return { orm: "prisma", dialect: "postgresql" };
+    }
+
+    return { orm: "prisma", dialect: "mysql" };
+}
+
+function getDatabaseModule(orm: DatabaseOrm, dialect: DatabaseDialect): DatabaseModuleName {
+    return DATABASE_MODULE_MAP[orm][dialect];
+}
+
+function parsePrismaProvider(schemaContent: string): DatabaseDialect | null {
+    const match = schemaContent.match(/provider\s*=\s*"([^"]+)"/);
+    if (!match) {
+        return null;
+    }
+
+    const provider = match[1]?.trim().toLowerCase();
+    if (provider === "mysql") {
+        return "mysql";
+    }
+
+    if (provider === "postgresql" || provider === "postgres") {
+        return "postgresql";
+    }
+
+    return null;
+}
+
 export function validateDatabaseUrl(rawUrl: string, moduleName: DatabaseModuleName) {
+    const { dialect } = getDatabaseSelection(moduleName);
     const dbUrl = rawUrl.trim();
     if (!dbUrl) {
         throw new Error("Database URL cannot be empty.");
@@ -46,11 +140,11 @@ export function validateDatabaseUrl(rawUrl: string, moduleName: DatabaseModuleNa
     }
 
     const protocol = parsed.protocol.toLowerCase();
-    if (moduleName === "database-pg" && protocol !== "postgresql:" && protocol !== "postgres:") {
+    if (dialect === "postgresql" && protocol !== "postgresql:" && protocol !== "postgres:") {
         throw new Error("PostgreSQL URL must start with postgres:// or postgresql://");
     }
 
-    if (moduleName === "database-mysql" && protocol !== "mysql:") {
+    if (dialect === "mysql" && protocol !== "mysql:") {
         throw new Error("MySQL URL must start with mysql://");
     }
 
@@ -59,17 +153,39 @@ export function validateDatabaseUrl(rawUrl: string, moduleName: DatabaseModuleNa
 
 export async function detectInstalledDatabaseDialect(projectRoot: string, srcDir: string): Promise<DatabaseModuleName | null> {
     const dbIndexPath = path.join(projectRoot, srcDir, "db", "index.ts");
-    if (!fs.existsSync(dbIndexPath)) {
-        return null;
+    const prismaSchemaPath = path.join(projectRoot, "prisma", "schema.prisma");
+
+    if (fs.existsSync(dbIndexPath)) {
+        const content = await fs.readFile(dbIndexPath, "utf-8");
+        if (content.includes("drizzle-orm/node-postgres") || content.includes(`from "pg"`)) {
+            return "database-pg";
+        }
+
+        if (content.includes("drizzle-orm/mysql2") || content.includes(`from "mysql2`)) {
+            return "database-mysql";
+        }
+
+        if (content.includes(`from "@prisma/client"`)) {
+            if (fs.existsSync(prismaSchemaPath)) {
+                const schemaContent = await fs.readFile(prismaSchemaPath, "utf-8");
+                const dialect = parsePrismaProvider(schemaContent);
+                if (dialect === "mysql") {
+                    return "database-prisma-mysql";
+                }
+            }
+
+            return "database-prisma-pg";
+        }
     }
 
-    const content = await fs.readFile(dbIndexPath, "utf-8");
-    if (content.includes("drizzle-orm/node-postgres") || content.includes(`from "pg"`)) {
-        return "database-pg";
-    }
+    if (fs.existsSync(prismaSchemaPath)) {
+        const schemaContent = await fs.readFile(prismaSchemaPath, "utf-8");
+        const dialect = parsePrismaProvider(schemaContent);
+        if (dialect === "mysql") {
+            return "database-prisma-mysql";
+        }
 
-    if (content.includes("drizzle-orm/mysql2") || content.includes(`from "mysql2`)) {
-        return "database-mysql";
+        return "database-prisma-pg";
     }
 
     return null;
@@ -81,6 +197,7 @@ export async function backupDatabaseFiles(projectRoot: string, srcDir: string): 
     const candidates = [
         path.join(projectRoot, srcDir, "db", "index.ts"),
         path.join(projectRoot, "drizzle.config.ts"),
+        path.join(projectRoot, "prisma", "schema.prisma"),
     ];
 
     let copied = false;
@@ -100,7 +217,10 @@ export async function backupDatabaseFiles(projectRoot: string, srcDir: string): 
 }
 
 export function databaseLabel(moduleName: DatabaseModuleName) {
-    return moduleName === "database-pg" ? "PostgreSQL" : "MySQL";
+    const selection = getDatabaseSelection(moduleName);
+    const ormLabel = selection.orm === "drizzle" ? "Drizzle" : "Prisma";
+    const dialectLabel = selection.dialect === "postgresql" ? "PostgreSQL" : "MySQL";
+    return `${ormLabel} (${dialectLabel})`;
 }
 
 export function getDatabaseSetupHint(moduleName: DatabaseModuleName, dbUrl: string) {
@@ -152,6 +272,8 @@ export async function ensureSchemaExport(projectRoot: string, srcDir: string, sc
 
 export interface DatabasePromptResult {
     resolvedModuleName: DatabaseModuleName;
+    selectedOrm: DatabaseOrm;
+    selectedDialect: DatabaseDialect;
     customDbUrl: string | undefined;
     usedDefaultDbUrl: boolean;
     databaseBackupPath: string | null;
@@ -169,25 +291,48 @@ export async function promptDatabaseConfig(
     let resolvedModuleName: DatabaseModuleName;
 
     if (initialModuleName === "database") {
-        const variantResponse = await prompts({
+        const ormResponse = await prompts({
             type: "select",
-            name: "variant",
-            message: "Which database dialect?",
+            name: "orm",
+            message: "Which ORM?",
             choices: [
-                { title: "PostgreSQL", value: "database-pg" },
-                { title: "MySQL", value: "database-mysql" },
+                { title: "Drizzle", value: "drizzle" },
+                { title: "Prisma", value: "prisma" },
             ],
+            initial: 0,
         });
 
-        if (!variantResponse.variant) {
+        if (!ormResponse.orm) {
             console.log(chalk.yellow("Operation cancelled."));
             return null;
         }
 
-        resolvedModuleName = variantResponse.variant;
+        const variantResponse = await prompts({
+            type: "select",
+            name: "dialect",
+            message: "Which database dialect?",
+            choices: [
+                { title: "PostgreSQL", value: "postgresql" },
+                { title: "MySQL", value: "mysql" },
+            ],
+        });
+
+        if (!variantResponse.dialect) {
+            console.log(chalk.yellow("Operation cancelled."));
+            return null;
+        }
+
+        resolvedModuleName = getDatabaseModule(ormResponse.orm as DatabaseOrm, variantResponse.dialect as DatabaseDialect);
     } else {
-        resolvedModuleName = initialModuleName as DatabaseModuleName;
+        const parsed = parseDatabaseDialect(initialModuleName);
+        if (!parsed) {
+            throw new Error(`Unsupported database module '${initialModuleName}'.`);
+        }
+
+        resolvedModuleName = parsed;
     }
+
+    const { orm: selectedOrm, dialect: selectedDialect } = getDatabaseSelection(resolvedModuleName);
 
     // Check for dialect switch
     let databaseBackupPath: string | null = null;
@@ -240,7 +385,14 @@ export async function promptDatabaseConfig(
     const usedDefaultDbUrl = enteredUrl.length === 0;
     const customDbUrl = validateDatabaseUrl(enteredUrl || defaultUrl, resolvedModuleName);
 
-    return { resolvedModuleName, customDbUrl, usedDefaultDbUrl, databaseBackupPath };
+    return {
+        resolvedModuleName,
+        selectedOrm,
+        selectedDialect,
+        customDbUrl,
+        usedDefaultDbUrl,
+        databaseBackupPath,
+    };
 }
 
 /**
@@ -265,5 +417,11 @@ export function printDatabaseHints(
         customDbUrl || DEFAULT_DATABASE_URLS[moduleName]
     );
     console.log(chalk.yellow(`ℹ Ensure DB exists: ${setupHint}`));
-    console.log(chalk.yellow("ℹ Run migrations: npx drizzle-kit generate && npx drizzle-kit migrate"));
+    if (isDrizzleDatabaseModule(moduleName)) {
+        console.log(chalk.yellow("ℹ Run migrations: npx drizzle-kit generate && npx drizzle-kit migrate"));
+        return;
+    }
+
+    console.log(chalk.yellow("ℹ Run migrations: npx prisma migrate dev --name init"));
+    console.log(chalk.yellow("ℹ Generate client: npx prisma generate"));
 }

@@ -35,10 +35,19 @@ export const resolveDependencies = async (
 
     for (const dep of moduleDependencies) {
         if (dep === "database") {
+            const configuredOrm = config?.database?.orm;
+            const configuredDialect = config?.database?.dialect;
             const pgExists = fs.existsSync(path.join(cwd, srcDir, BLOCK_SIGNATURES["database-pg"]));
             const mysqlExists = fs.existsSync(path.join(cwd, srcDir, BLOCK_SIGNATURES["database-mysql"]));
+            const prismaSchemaExists = fs.existsSync(path.join(cwd, "prisma", "schema.prisma"));
+            const hasDbFiles = pgExists || mysqlExists || prismaSchemaExists;
+            const hasDbConfig = Boolean(configuredOrm && configuredDialect);
 
-            if (pgExists || mysqlExists) {
+            if (hasDbConfig && hasDbFiles) {
+                continue;
+            }
+
+            if (!hasDbConfig && hasDbFiles) {
                 continue;
             }
 

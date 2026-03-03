@@ -1,6 +1,6 @@
 # zuro-cli
 
-A CLI for scaffolding backend foundations and modules in your project.
+A CLI for adding production-ready backend modules you own, without framework lock-in.
 
 ## init
 

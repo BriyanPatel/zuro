@@ -6,7 +6,7 @@ export function AudienceAndProblemSection() {
       <div className="max-w-3xl">
         <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">Who it is for</p>
         <h2 className="mt-3 text-3xl font-semibold tracking-tight text-white sm:text-4xl">
-          Built for solo builders and startup teams moving fast.
+          Built for developers and teams shipping production backends.
         </h2>
         <p className="mt-4 text-base leading-7 text-zinc-400">
           Zuro gives you production-ready defaults without framework lock-in, so MVP velocity does not come at the

@@ -34,16 +34,16 @@ export type FaqItem = {
 
 export const HERO_METRICS: Metric[] = [
   { value: "60s", label: "to production-ready core" },
-  { value: "6", label: "modules available today" },
+  { value: "7", label: "modules available today" },
   { value: "0", label: "runtime lock-in" },
 ];
 
 export const AUDIENCE_PERSONAS: Persona[] = [
   {
     title: "Solo Developers",
-    subtitle: "Shipping nights and weekends",
+    subtitle: "Shipping production side projects",
     description:
-      "Start clean on Friday and ship by Sunday. Zuro removes setup drag so your limited hours go to product work.",
+      "Ship quickly without compromising architecture. Zuro removes setup drag while keeping your backend easy to maintain.",
     icon: UserRound,
   },
   {
@@ -65,11 +65,11 @@ export const AUDIENCE_PERSONAS: Persona[] = [
 export const PAIN_POINTS = [
   {
     icon: Clock3,
-    text: "Losing 2+ hours setting up TypeScript, middleware, env validation, and logging before any feature work.",
+    text: "Losing hours setting up TypeScript, middleware, env validation, and logging before any feature work.",
   },
   {
     icon: AlertTriangle,
-    text: "Copy-pasting backend snippets from old repos and hoping they still match current production needs.",
+    text: "Reusing old snippets with unknown quality and spending time re-validating production readiness.",
   },
   {
     icon: FolderTree,
@@ -114,9 +114,15 @@ export const MODULES: ModuleItem[] = [
     description: "OpenAPI generation with Scalar UI.",
     icon: Code2,
   },
+  {
+    name: "Rate Limiter",
+    command: "zuro-cli add rate-limiter",
+    description: "IP-based rate limiting with express-rate-limit.",
+    icon: ShieldCheck,
+  },
 ];
 
-export const ROADMAP_MODULES = ["Rate limiting", "File upload", "Caching"];
+export const ROADMAP_MODULES = ["File upload", "Caching (Redis)", "Cron jobs", "WebSockets", "Payments (Stripe)"];
 
 export const COMPARISON_ROWS: ComparisonRow[] = [
   {
@@ -155,21 +161,21 @@ export const FAQ_ITEMS: FaqItem[] = [
   {
     question: "How is this different from using AI to scaffold a backend?",
     answer:
-      "AI prompt loops can drift and produce inconsistent structure across iterations. Zuro applies the same production-ready module patterns directly to your existing project files every time.",
+      "AI generates different code every time and can drift between prompts. Zuro gives you tested, consistent module patterns — like shadcn/ui does for frontend components.",
   },
   {
-    question: "Will I be locked into Zuro after generation?",
+    question: "Will I be locked into Zuro?",
     answer:
-      "No. Zuro is a scaffolding CLI. It writes plain backend project files, then gets out of the way.",
+      "No. Zuro copies code into your project and gets out of the way. There's no runtime dependency, no import from 'zuro'. It's your code.",
   },
   {
-    question: "Can I modify generated files freely?",
+    question: "Can I modify the generated files?",
     answer:
-      "Yes. Rename files, refactor folders, and rewrite logic as needed. The code is fully yours.",
+      "Yes — that's the whole point. Every file is plain TypeScript in your project. Rename, refactor, or rewrite anything.",
   },
   {
-    question: "Is this useful for MVPs that may scale later?",
+    question: "Why Express and not Fastify/Hono/Elysia?",
     answer:
-      "Yes. You start with production defaults (security, logging, validation) and add modules only when needed, which keeps early velocity high without painting yourself into a corner.",
+      "Express has the largest ecosystem and hiring pool. Most tutorials, middleware, and answers online are Express-based. We go where the developers are.",
   },
 ];

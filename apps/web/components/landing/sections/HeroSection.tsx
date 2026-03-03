@@ -26,26 +26,26 @@ export function HeroSection() {
         transition={{ duration: 0.5 }}
       >
         <span className="inline-flex items-center rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs font-medium text-zinc-300">
-          Open source · MIT · Zero lock-in
+          Production-ready modules for Express + TypeScript
         </span>
 
         <h1 className="mt-6 text-4xl font-semibold tracking-tight text-white sm:text-5xl lg:text-6xl">
-          The last time you'll set up backend from scratch.
+          Production-ready backend modules you own.
         </h1>
 
         <p className="mt-5 max-w-2xl text-base leading-7 text-zinc-400 sm:text-lg">
-          One command to start. One command per feature. Zero vendor lock-in.
+          No framework lock-in. No hidden runtime. Add production backend patterns as plain TypeScript code you fully control.
         </p>
 
         <div className="mt-5 flex flex-wrap gap-2">
           <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs text-zinc-300">
-            Prebuilt modules
+            Code lives in your project
           </span>
           <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs text-zinc-300">
-            Faster than prompt-loop scaffolding
+            No runtime dependency
           </span>
           <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs text-zinc-300">
-            Same project files, full ownership
+            Modify everything freely
           </span>
         </div>
 
@@ -54,7 +54,7 @@ export function HeroSection() {
             href="/docs/init"
             className="inline-flex items-center gap-2 rounded-md border border-emerald-400/40 bg-emerald-400/10 px-4 py-2.5 text-sm font-medium text-emerald-300 transition hover:bg-emerald-400/20"
           >
-            Start your MVP backend
+            Get started
             <ArrowRight className="h-4 w-4" />
           </Link>
           <Link
@@ -66,7 +66,7 @@ export function HeroSection() {
           </Link>
         </div>
 
-        <p className="mt-6 text-xs text-zinc-500">Modules today: auth, database, validator, docs, mailer, error-handler.</p>
+        <p className="mt-6 text-xs text-zinc-500">Modules: auth, database, validator, docs, mailer, error-handler, rate-limiter.</p>
       </motion.div>
 
       <motion.aside

@@ -115,6 +115,54 @@
         "drizzle-kit"
       ]
     },
+    "database-prisma-pg": {
+      "type": "block",
+      "files": [
+        {
+          "path": "express/db/prisma/index.ts",
+          "target": "db/index.ts",
+          "type": "library"
+        },
+        {
+          "path": "express/db/prisma/schema.postgres.prisma",
+          "target": "../prisma/schema.prisma",
+          "type": "config"
+        }
+      ],
+      "moduleDependencies": [
+        "core"
+      ],
+      "dependencies": [
+        "@prisma/client"
+      ],
+      "devDependencies": [
+        "prisma"
+      ]
+    },
+    "database-prisma-mysql": {
+      "type": "block",
+      "files": [
+        {
+          "path": "express/db/prisma/index.ts",
+          "target": "db/index.ts",
+          "type": "library"
+        },
+        {
+          "path": "express/db/prisma/schema.mysql.prisma",
+          "target": "../prisma/schema.prisma",
+          "type": "config"
+        }
+      ],
+      "moduleDependencies": [
+        "core"
+      ],
+      "dependencies": [
+        "@prisma/client"
+      ],
+      "devDependencies": [
+        "prisma"
+      ]
+    },
     "validator": {
       "type": "block",
       "files": [

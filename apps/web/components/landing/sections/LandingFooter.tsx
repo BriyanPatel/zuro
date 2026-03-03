@@ -6,7 +6,7 @@ export function LandingFooter() {
       <div className="grid gap-10 text-sm text-zinc-400 md:grid-cols-[1.4fr_1fr_1fr_1fr]">
         <div>
           <p className="text-base font-semibold text-white">Zuro</p>
-          <p className="mt-2 max-w-xs text-zinc-500">Backend foundation with prebuilt modules for solo developers and early-stage startups.</p>
+          <p className="mt-2 max-w-xs text-zinc-500">Production-ready backend modules you own, without framework lock-in.</p>
         </div>
 
         <div className="space-y-2">

@@ -138,6 +138,22 @@ export const ENV_CONFIGS = {
             { name: "DATABASE_URL", schema: "z.string().url()" },
         ],
     },
+    "database-prisma-pg": {
+        envVars: {
+            DATABASE_URL: "postgresql://postgres@localhost:5432/mydb",
+        },
+        schemaFields: [
+            { name: "DATABASE_URL", schema: "z.string().url()" },
+        ],
+    },
+    "database-prisma-mysql": {
+        envVars: {
+            DATABASE_URL: "mysql://root@localhost:3306/mydb",
+        },
+        schemaFields: [
+            { name: "DATABASE_URL", schema: "z.string().url()" },
+        ],
+    },
     auth: {
         envVars: {
             BETTER_AUTH_SECRET: "your-secret-key-at-least-32-characters-long",
