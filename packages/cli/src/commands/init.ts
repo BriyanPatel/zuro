@@ -3,6 +3,7 @@ import chalk from "chalk";
 import fs from "fs-extra";
 import path from "path";
 import prompts from "prompts";
+import { execSync } from "child_process";
 import { fetchRegistry, fetchFile, RegistryFile } from "../utils/registry";
 import { initPackageJson, installDependencies, ensurePackageManagerAvailable } from "../utils/pm";
 import { createInitialEnv } from "../utils/env-manager";
@@ -73,6 +74,70 @@ bun.lock
 bun.lockb
 `;
         await fs.writeFile(prettierIgnorePath, ignoreContent);
+    }
+}
+
+async function setupGitignore(targetDir: string) {
+    const gitignorePath = path.join(targetDir, ".gitignore");
+
+    if (await fs.pathExists(gitignorePath)) {
+        return;
+    }
+
+    const gitignoreContent = `# dependencies
+node_modules
+
+# build output
+dist
+build
+
+# environment variables
+.env
+.env.*
+!.env.example
+
+# logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# coverage
+coverage
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+`;
+    await fs.writeFile(gitignorePath, gitignoreContent);
+}
+
+function tryGitInit(targetDir: string) {
+    try {
+        // Skip if already inside a git repo
+        execSync("git rev-parse --is-inside-work-tree", {
+            cwd: targetDir,
+            stdio: "ignore",
+        });
+        return; // already in a git repo
+    } catch {
+        // not in a git repo — proceed to init
+    }
+
+    try {
+        execSync("git init", { cwd: targetDir, stdio: "ignore" });
+        execSync("git add -A", { cwd: targetDir, stdio: "ignore" });
+        execSync('git commit -m "Initial commit from zuro-cli"', {
+            cwd: targetDir,
+            stdio: "ignore",
+        });
+    } catch {
+        // git not installed or commit failed — silently skip
     }
 }
 
@@ -261,8 +326,18 @@ export async function init() {
             await setupPrettier(targetDir);
         }
 
+        currentStep = "gitignore setup";
+        spinner.text = "Setting up .gitignore...";
+        await setupGitignore(targetDir);
+
         currentStep = "config write";
         await writeZuroConfig(targetDir, zuroConfig);
+
+        if (!isExistingProject) {
+            currentStep = "git init";
+            spinner.text = "Initializing git repository...";
+            tryGitInit(targetDir);
+        }
 
         spinner.succeed(chalk.green("Project initialized successfully!"));
 

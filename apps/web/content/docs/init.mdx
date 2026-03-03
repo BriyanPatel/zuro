@@ -14,22 +14,10 @@ It can also set up Prettier for your generated project during the interactive fl
 
 ## Quick Start
 
-<Tabs items={['npm', 'pnpm', 'bun']}>
-  <Tab value="npm">
-  ```bash
-  npx zuro-cli init
-  ```
-  </Tab>
-  <Tab value="pnpm">
-  ```bash
-  pnpm dlx zuro-cli init
-  ```
-  </Tab>
-  <Tab value="bun">
-  ```bash
-  bun x zuro-cli init
-  ```
-  </Tab>
+<Tabs items={["npm", "pnpm", "bun"]}>
+  <Tab value="npm">```bash npx zuro-cli init ```</Tab>
+  <Tab value="pnpm">```bash pnpm dlx zuro-cli init ```</Tab>
+  <Tab value="bun">```bash bun x zuro-cli init ```</Tab>
 </Tabs>
 
 ---
@@ -48,7 +36,7 @@ It can also set up Prettier for your generated project during the interactive fl
 
 - **Leave blank** -> Uses current folder
 - **Enter name** -> Creates/uses that folder
-</Step>
+  </Step>
 
 <Step>
 ### Package Manager
@@ -61,12 +49,14 @@ It can also set up Prettier for your generated project during the interactive fl
 ```
 
 Zuro checks that your selected package manager is installed before continuing.
+
 </Step>
 
 <Step>
 ### Safety Confirmation
 
 If target folder already exists and is not empty, Zuro asks before continuing.
+
 </Step>
 
 <Step>
@@ -79,13 +69,16 @@ If target folder already exists and is not empty, Zuro asks before continuing.
 ```
 
 If you choose **Yes**, Zuro adds:
+
 - `prettier` as a dev dependency
 - `.prettierrc` and `.prettierignore`
 - `format` and `format:check` scripts in `package.json`
-</Step>
+  </Step>
 
 <Step>
 ### Done
+
+Zuro automatically initializes a **Git repository** and creates the first commit.
 
 ```bash
 cd my-project
@@ -93,6 +86,7 @@ npm run dev
 ```
 
 Server runs at `http://localhost:3000`.
+
 </Step>
 </Steps>
 
@@ -114,6 +108,7 @@ Server runs at `http://localhost:3000`.
       </Folder>
     </Folder>
     <File name=".env" />
+    <File name=".gitignore" />
     <File name="package.json" />
     <File name="tsconfig.json" />
     <File name="zuro.json" />
@@ -126,43 +121,26 @@ Server runs at `http://localhost:3000`.
 
 ## What Init Includes
 
-| Feature | Library | Description |
-|---------|---------|-------------|
-| **Framework** | Express.js | Fast, minimal web framework |
-| **Language** | TypeScript | Type safety out of the box |
-| **Security** | Helmet | Secure HTTP headers |
-| **CORS** | cors | Cross-origin requests |
-| **Logging** | Pino | Fast JSON logging |
-| **Env Validation** | Zod | Type-safe environment variables |
-| **Routing** | Express Router | Centralized `/api` route composition |
-| **Formatting (Optional)** | Prettier | Consistent formatting via init prompt |
+| Feature                   | Library        | Description                              |
+| ------------------------- | -------------- | ---------------------------------------- |
+| **Framework**             | Express.js     | Fast, minimal web framework              |
+| **Language**              | TypeScript     | Type safety out of the box               |
+| **Security**              | Helmet         | Secure HTTP headers                      |
+| **CORS**                  | cors           | Cross-origin requests                    |
+| **Logging**               | Pino           | Fast JSON logging                        |
+| **Env Validation**        | Zod            | Type-safe environment variables          |
+| **Routing**               | Express Router | Centralized `/api` route composition     |
+| **Formatting (Optional)** | Prettier       | Consistent formatting via init prompt    |
+| **Git**                   | git            | Repository initialized with first commit |
 
 ---
 
 ## Run Your Server
 
-<Tabs items={['npm', 'pnpm', 'bun']}>
-  <Tab value="npm">
-  ```bash
-  npm run dev
-  npm run build
-  npm start
-  ```
-  </Tab>
-  <Tab value="pnpm">
-  ```bash
-  pnpm dev
-  pnpm build
-  pnpm start
-  ```
-  </Tab>
-  <Tab value="bun">
-  ```bash
-  bun run dev
-  bun run build
-  bun run start
-  ```
-  </Tab>
+<Tabs items={["npm", "pnpm", "bun"]}>
+  <Tab value="npm">```bash npm run dev npm run build npm start ```</Tab>
+  <Tab value="pnpm">```bash pnpm dev pnpm build pnpm start ```</Tab>
+  <Tab value="bun">```bash bun run dev bun run build bun run start ```</Tab>
 </Tabs>
 
 Health check:
@@ -186,6 +164,7 @@ npm run format:check
 If this directory already contains a non-Zuro project, `init` stops before writing files.
 
 Use `zuro-cli init` in:
+
 - a fresh/empty directory, or
 - an existing project already managed by Zuro CLI.
 
