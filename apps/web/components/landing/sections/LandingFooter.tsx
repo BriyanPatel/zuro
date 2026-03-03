@@ -23,6 +23,7 @@ export function LandingFooter() {
           <Link href="/docs/error-handler" className="block hover:text-zinc-200">Error Handler</Link>
           <Link href="/docs/mailer" className="block hover:text-zinc-200">Mailer</Link>
           <Link href="/docs/docs" className="block hover:text-zinc-200">API Docs</Link>
+          <Link href="/docs/rate-limiter" className="block hover:text-zinc-200">Rate Limiter</Link>
         </div>
 
         <div className="space-y-2">
