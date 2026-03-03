@@ -3,7 +3,7 @@ title: Validator
 description: Simple request validation with Zod
 ---
 
-Validate `body`, `query`, and `params` with Zod schemas before your route handlers run.
+Validate incoming requests with Zod schemas. Invalid requests get a `422` response automatically.
 
 ---
 
@@ -37,49 +37,58 @@ bun x zuro-cli add validator
 
 ## Usage
 
-**Validate request body:**
+Add `validate(schema)` as middleware to any route. Your schema describes what the request should look like.
+
+**Validate a POST body:**
 
 ```ts
-import { Router } from "express";
 import { z } from "zod";
 import { validate } from "../middleware/validate";
 
-const router = Router();
-
-const createUserSchema = z.object({
+const schema = z.object({
   body: z.object({
-    name: z.string().min(2),
+    name: z.string(),
     email: z.string().email(),
   }),
 });
 
-router.post("/users", validate(createUserSchema), (req, res) => {
-  const { name, email } = req.body;
-  res.json({ name, email });
+router.post("/users", validate(schema), (req, res) => {
+  // req.body is validated — safe to use
+  res.json({ name: req.body.name });
 });
 ```
 
-**Validate query and params:**
+**Validate URL params:**
 
 ```ts
-const listPostsSchema = z.object({
-  query: z.object({
-    page: z.coerce.number().min(1).default(1),
-    limit: z.coerce.number().min(1).max(100).default(20),
-  }),
+const schema = z.object({
   params: z.object({
-    userId: z.string().uuid(),
+    id: z.string().uuid(),
   }),
 });
 
-router.get("/users/:userId/posts", validate(listPostsSchema), (req, res) => {
-  const { page, limit } = req.query;
-  const { userId } = req.params;
-  res.json({ page, limit, userId });
+router.get("/users/:id", validate(schema), (req, res) => {
+  res.json({ userId: req.params.id });
 });
 ```
 
-If validation fails, the client gets a `422`:
+**Validate query strings:**
+
+```ts
+const schema = z.object({
+  query: z.object({
+    page: z.coerce.number().default(1),
+    limit: z.coerce.number().default(20),
+  }),
+});
+
+router.get("/posts", validate(schema), (req, res) => {
+  // page and limit are numbers, not strings
+  res.json({ page: req.query.page, limit: req.query.limit });
+});
+```
+
+**What happens on invalid input:**
 
 ```json
 {
@@ -94,39 +103,12 @@ If validation fails, the client gets a `422`:
 
 ## Configuration
 
-No environment variables needed. The validator works with `zod` which is already included in core.
-
-Parsed values are written back to `req` automatically — so Zod defaults and coercion just work.
+No environment variables needed. Zod defaults and coercion work automatically — for example, `z.coerce.number()` converts the string `"5"` from a query param to the number `5`.
 
 ---
 
 ## Troubleshooting
 
-- **422 Validation failed** — check that your request matches the Zod schema fields and types
-- **Query/params not validating** — wrap them in `z.object({ query: ..., params: ... })`
+- **422 Validation failed** — check that your request matches the schema fields and types
+- **Query params are strings** — use `z.coerce.number()` or `z.coerce.boolean()` to convert them
 - **Non-Zod errors** — they pass through to your error handler middleware
-
----
-
-## Next Steps
-
-<div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
-  <a
-    href="/docs/error-handler"
-    className="block border border-border rounded-xl p-5 bg-card hover:border-green-500/50 transition-colors no-underline"
-  >
-    <h3 className="font-bold text-foreground mb-1">→ Add Error Handler</h3>
-    <p className="text-sm text-muted-foreground">
-      Centralized API error responses
-    </p>
-  </a>
-  <a
-    href="/docs/auth"
-    className="block border border-border rounded-xl p-5 bg-card hover:border-green-500/50 transition-colors no-underline"
-  >
-    <h3 className="font-bold text-foreground mb-1">→ Add Auth</h3>
-    <p className="text-sm text-muted-foreground">
-      User auth and protected routes
-    </p>
-  </a>
-</div>
