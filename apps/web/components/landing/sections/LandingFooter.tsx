@@ -46,7 +46,7 @@ export function LandingFooter() {
 
       <div className="mt-10 flex flex-col items-center justify-between gap-3 border-t border-white/10 pt-5 text-xs text-zinc-500 sm:flex-row">
         <p>
-          Built by <a href="https://devbybriyan.com" target="_blank" rel="noreferrer" className="text-zinc-400 hover:text-zinc-200">Briyan Patel</a>
+          Built by <a href="https://x.com/briyan_dev" target="_blank" rel="noreferrer" className="text-zinc-400 hover:text-zinc-200">Briyan Patel</a>
         </p>
         <p>© {new Date().getFullYear()} Zuro</p>
       </div>

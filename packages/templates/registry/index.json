@@ -236,6 +236,23 @@
       "devDependencies": [
         "@types/nodemailer"
       ]
+    },
+    "rate-limiter": {
+      "type": "block",
+      "files": [
+        {
+          "path": "express/middleware/rate-limiter.ts",
+          "target": "middleware/rate-limiter.ts",
+          "type": "library"
+        }
+      ],
+      "moduleDependencies": [
+        "core"
+      ],
+      "dependencies": [
+        "express-rate-limit"
+      ],
+      "devDependencies": []
     }
   }
 }

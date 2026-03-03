@@ -9,6 +9,7 @@
         "error-handler",
         "auth",
         "docs",
-        "mailer"
+        "mailer",
+        "rate-limiter"
     ]
 }

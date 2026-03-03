@@ -15,6 +15,7 @@ const BLOCK_SIGNATURES: Record<string, string> = {
     auth: "lib/auth.ts",
     mailer: "lib/mailer.ts",
     docs: "lib/openapi.ts",
+    "rate-limiter": "middleware/rate-limiter.ts",
 };
 
 /**

@@ -1,0 +1,162 @@
+---
+title: Rate Limiter
+description: Protect your API from abuse with express-rate-limit
+---
+
+# Rate Limiter
+
+Protect your API from abuse with automatic request rate limiting.
+
+Adds `express-rate-limit` middleware with sensible defaults and env-based configuration.
+
+---
+
+## Quick Start
+
+<Tabs items={["npm", "pnpm", "bun"]}>
+  <Tab value="npm">```bash npx zuro-cli add rate-limiter ```</Tab>
+  <Tab value="pnpm">```bash pnpm dlx zuro-cli add rate-limiter ```</Tab>
+  <Tab value="bun">```bash bun x zuro-cli add rate-limiter ```</Tab>
+</Tabs>
+
+That's it — no prompts, no configuration needed. Works out of the box.
+
+---
+
+## What Gets Created
+
+<Files>
+  <Folder name="src" defaultOpen>
+    <Folder name="middleware" defaultOpen>
+      <File name="rate-limiter.ts" />
+    </Folder>
+  </Folder>
+</Files>
+
+Zuro also:
+
+- Adds `RATE_LIMIT_WINDOW_MS` and `RATE_LIMIT_MAX` to `.env`
+- Updates `env.ts` with the new schema fields
+- Injects `app.use(rateLimiter)` into `app.ts` (after `express.json()`)
+
+---
+
+## Default Limits
+
+| Setting          | Default       | Description                        |
+| ---------------- | ------------- | ---------------------------------- |
+| **Window**       | 15 minutes    | Time window for counting requests  |
+| **Max Requests** | 100           | Maximum requests per IP per window |
+| **Headers**      | `RateLimit-*` | IETF draft-7 standard headers      |
+
+When a client exceeds the limit, they receive:
+
+```json
+{
+  "status": "error",
+  "code": "RATE_LIMIT_EXCEEDED",
+  "message": "Too many requests, please try again later."
+}
+```
+
+---
+
+## Configuration
+
+Customize limits via environment variables — no code changes needed:
+
+```env
+# .env
+RATE_LIMIT_WINDOW_MS=900000   # 15 minutes (in milliseconds)
+RATE_LIMIT_MAX=100             # requests per window per IP
+```
+
+**Common presets:**
+
+| Use Case     | Window | Max | Env Values      |
+| ------------ | ------ | --- | --------------- |
+| Public API   | 1 min  | 30  | `60000`, `30`   |
+| Standard App | 15 min | 100 | `900000`, `100` |
+| Internal API | 1 min  | 200 | `60000`, `200`  |
+
+---
+
+## Per-Route Rate Limiting
+
+The default rate limiter applies globally. For stricter limits on specific routes (e.g., login), create a second limiter:
+
+```typescript
+import rateLimit from "express-rate-limit";
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10, // much stricter
+  message: {
+    status: "error",
+    code: "RATE_LIMIT_EXCEEDED",
+    message: "Too many login attempts, please try again later.",
+  },
+});
+
+// Apply only to login route
+router.post("/login", authLimiter, loginController);
+```
+
+---
+
+## How It Works With Auth
+
+If you have the **auth** module installed, both rate limiters work together:
+
+1. **Global rate limiter** (this module) — 100 req/15 min across all routes
+2. **Better Auth's built-in limiter** — additional protection on auth endpoints
+
+This provides defense in depth — the global limiter catches broad abuse while Better Auth handles auth-specific attacks.
+
+---
+
+## Response Headers
+
+Clients receive standard `RateLimit-*` headers on every response:
+
+```
+RateLimit-Limit: 100
+RateLimit-Remaining: 97
+RateLimit-Reset: 1709420400
+```
+
+These headers let frontends show "slow down" warnings before hitting the limit.
+
+---
+
+## What Init Includes
+
+| Feature              | Library            | Description                         |
+| -------------------- | ------------------ | ----------------------------------- |
+| **Rate Limiting**    | express-rate-limit | IP-based request throttling         |
+| **Standard Headers** | IETF draft-7       | `RateLimit-*` response headers      |
+| **Env Config**       | Zod                | Type-safe, runtime-validated limits |
+
+---
+
+## Troubleshooting
+
+- **Getting 429 during development?** Increase `RATE_LIMIT_MAX` in `.env` or set it to `0` to disable (not recommended for production).
+- **Rate limit not working behind a proxy?** Set `app.set("trust proxy", 1)` in `app.ts` so Express reads `X-Forwarded-For` headers.
+- **Need different limits per route?** See [Per-Route Rate Limiting](#per-route-rate-limiting) above.
+
+---
+
+## Next Steps
+
+<div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+  <a href="/docs/error-handler" className="block border border-border rounded-xl p-5 bg-card hover:border-green-500/50 transition-colors no-underline">
+    <h3 className="font-bold text-foreground mb-1">-> Add Error Handler</h3>
+    <p className="text-sm text-muted-foreground">Consistent API error responses</p>
+  </a>
+
+  <a href="/docs/auth" className="block border border-border rounded-xl p-5 bg-card hover:border-green-500/50 transition-colors no-underline">
+    <h3 className="font-bold text-foreground mb-1">-> Add Auth</h3>
+    <p className="text-sm text-muted-foreground">User signup, login, and sessions</p>
+  </a>
+</div>

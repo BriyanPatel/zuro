@@ -174,4 +174,14 @@ export const ENV_CONFIGS = {
             { name: "MAIL_FROM", schema: "z.string().min(1)" },
         ],
     },
+    "rate-limiter": {
+        envVars: {
+            RATE_LIMIT_WINDOW_MS: "900000",
+            RATE_LIMIT_MAX: "100",
+        },
+        schemaFields: [
+            { name: "RATE_LIMIT_WINDOW_MS", schema: "z.coerce.number().default(900000)" },
+            { name: "RATE_LIMIT_MAX", schema: "z.coerce.number().default(100)" },
+        ],
+    },
 };
