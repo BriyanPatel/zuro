@@ -1,0 +1,217 @@
+---
+title: Uploads
+description: Add S3, R2, or Cloudinary uploads with proxy, direct, or multipart flows
+---
+
+Scaffold a production-minded upload system with provider-aware defaults, auth-aware routes, and optional metadata tracking.
+
+---
+
+## Installation
+
+<Tabs items={['npm', 'pnpm', 'bun']}>
+  <Tab value="npm">
+
+```bash
+npx zuro-cli add uploads
+```
+
+  </Tab>
+  <Tab value="pnpm">
+
+```bash
+pnpm dlx zuro-cli add uploads
+```
+
+  </Tab>
+  <Tab value="bun">
+
+```bash
+bun x zuro-cli add uploads
+```
+
+  </Tab>
+</Tabs>
+
+During install, Zuro asks for:
+
+- provider: `s3`, `r2`, or `cloudinary`
+- mode: `proxy`, `direct`, or `large`
+- upload access: authenticated, optional auth, or public
+- file visibility: private or public
+- preset: image, document, video, or mixed
+- metadata storage: database or none
+
+---
+
+## Generated Files
+
+```text
+src/
+├── controllers/uploads.controller.ts
+├── routes/uploads.routes.ts
+├── middleware/upload-auth.ts
+└── lib/uploads/
+    ├── index.ts
+    ├── metadata.ts
+    ├── provider.ts
+    ├── proxy.ts
+    └── types.ts
+```
+
+If you enable database metadata, Zuro also adds:
+
+```text
+src/db/schema/uploads.ts
+```
+
+---
+
+## Modes
+
+### Proxy
+
+Your API server receives the file and uploads it to the provider.
+
+- best for form + file in one request
+- easiest to add to admin panels and CRUD routes
+- strongest server-side validation control
+
+Standalone route:
+
+```bash
+POST /api/uploads
+```
+
+Reuse the generated middleware inside your own business route:
+
+```ts title="src/routes/products.routes.ts"
+import { Router } from "express";
+import { uploadSingle } from "../lib/uploads/proxy";
+import { saveProxyUpload } from "../lib/uploads";
+
+const router = Router();
+
+router.post("/products", uploadSingle("image"), async (req, res) => {
+  const file = req.file;
+
+  if (!file) {
+    return res.status(400).json({ message: "image is required" });
+  }
+
+  const uploaded = await saveProxyUpload(file);
+
+  res.status(201).json({
+    name: req.body.name,
+    imageKey: uploaded.upload.key,
+  });
+});
+```
+
+### Direct
+
+The browser uploads directly to storage using signed params or URLs.
+
+Flow:
+
+1. `POST /api/uploads/presign`
+2. client uploads to S3/R2/Cloudinary
+3. `POST /api/uploads/complete`
+
+This is the best default for most production apps.
+
+### Large
+
+Large mode scaffolds multipart upload routes for S3 and R2:
+
+- `POST /api/uploads/multipart/init`
+- `POST /api/uploads/multipart/complete`
+- `POST /api/uploads/multipart/abort`
+
+Cloudinary is intentionally not scaffolded for this mode in v1. For large uploads, use S3 or R2.
+
+---
+
+## Auth And Access
+
+Upload auth and file visibility are configured separately.
+
+- authenticated upload + public file access is valid
+- authenticated upload + private file access is best for user-owned assets
+- public upload + public file access is valid, but higher abuse risk
+
+For private files, Zuro gives you:
+
+```bash
+POST /api/uploads/access-url
+```
+
+That route returns a signed/private access URL when the caller is allowed to fetch the file.
+
+---
+
+## Configuration
+
+Zuro adds shared upload env vars:
+
+```bash
+UPLOAD_PROVIDER=s3
+UPLOAD_MODE=direct
+UPLOAD_AUTH_MODE=required
+UPLOAD_FILE_ACCESS=private
+UPLOAD_FILE_PRESET=image
+UPLOAD_KEY_PREFIX=uploads
+UPLOAD_ALLOWED_MIME=image/jpeg,image/png,image/webp,image/gif
+UPLOAD_MAX_FILE_SIZE=5242880
+UPLOAD_MAX_FILES=1
+UPLOAD_DIRECT_URL_TTL_SECONDS=900
+UPLOAD_ACCESS_URL_TTL_SECONDS=300
+UPLOAD_MULTIPART_PART_SIZE=5242880
+```
+
+For S3 / R2:
+
+```bash
+UPLOAD_BUCKET=my-bucket
+UPLOAD_REGION=us-east-1
+UPLOAD_ENDPOINT=
+UPLOAD_ACCESS_KEY_ID=...
+UPLOAD_SECRET_ACCESS_KEY=...
+UPLOAD_PUBLIC_BASE_URL=
+```
+
+For Cloudinary:
+
+```bash
+CLOUDINARY_CLOUD_NAME=...
+CLOUDINARY_API_KEY=...
+CLOUDINARY_API_SECRET=...
+CLOUDINARY_FOLDER=uploads
+CLOUDINARY_UPLOAD_PRESET=
+```
+
+---
+
+## Provider Notes
+
+- **S3**: strongest all-around option for generic file storage
+- **R2**: good default if you want S3-compatible storage with Cloudflare's pricing model
+- **Cloudinary**: best fit for image/video-heavy apps, not generic document storage
+
+R2 note:
+
+- presigned upload URLs use the R2 S3 API endpoint, not your custom domain
+
+Cloudinary note:
+
+- proxy + direct are supported
+- large multipart scaffolding is not generated in this module
+
+---
+
+## Troubleshooting
+
+- **Private uploads with no metadata** — ownership falls back to key prefixes; database metadata is safer
+- **Cloudinary + large uploads** — use S3 or R2 instead
+- **Upload route not found** — verify `uploads.routes.ts` is mounted under `src/routes/index.ts`
+- **MIME rejected** — update `UPLOAD_ALLOWED_MIME` in `.env`

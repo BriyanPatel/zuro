@@ -47,6 +47,7 @@ Works with npm, pnpm, and bun.
 |---|---|---|
 | **Core** | `zuro-cli init` | Express, TypeScript, Helmet, CORS, Pino logger, Zod env validation |
 | **Database** | `zuro-cli add database` | Drizzle ORM with PostgreSQL or MySQL |
+| **Uploads** | `zuro-cli add uploads` | S3, R2, or Cloudinary uploads with proxy, direct, or multipart flows |
 | **Auth** | `zuro-cli add auth` | Better-Auth — signup, login, sessions |
 | **Validator** | `zuro-cli add validator` | Zod middleware for request body validation |
 | **Error Handler** | `zuro-cli add error-handler` | Custom error classes, consistent API responses |
@@ -112,6 +113,7 @@ Full docs at [zuro-cli.devbybriyan.com/docs](https://zuro-cli.devbybriyan.com/do
 
 - [Init](https://zuro-cli.devbybriyan.com/docs/init)
 - [Database](https://zuro-cli.devbybriyan.com/docs/database)
+- [Uploads](https://zuro-cli.devbybriyan.com/docs/uploads)
 - [Auth](https://zuro-cli.devbybriyan.com/docs/auth)
 - [Validator](https://zuro-cli.devbybriyan.com/docs/validator)
 - [Error Handler](https://zuro-cli.devbybriyan.com/docs/error-handler)

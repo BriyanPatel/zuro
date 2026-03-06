@@ -4,7 +4,7 @@ description: Backend in 60 seconds. Ship your idea.
 ---
 
 
-**Stop wasting time on Express boilerplate.** `init` gives you the production-ready core (Express + TypeScript + security + logging + env validation). Then use `add` to install modules like auth, database, and validator when you need them.
+**Stop wasting time on Express boilerplate.** `init` gives you the production-ready core (Express + TypeScript + security + logging + env validation). Then use `add` to install modules like auth, database, uploads, and validator when you need them.
 
 ```bash
 npx zuro-cli init
@@ -110,6 +110,7 @@ Build your actual features. We handle the infrastructure.
 |--------|---------|--------------|
 | **Core** | `zuro-cli init` | Express, TypeScript, Helmet, CORS, Pino logger |
 | **Database** | `zuro-cli add database` | Drizzle ORM, PostgreSQL or MySQL |
+| **Uploads** | `zuro-cli add uploads` | S3, R2, or Cloudinary uploads with proxy, direct, or multipart flows |
 | **Auth** | `zuro-cli add auth` | Better-Auth, signup/login, sessions |
 | **API Docs** | `zuro-cli add docs` | Scalar UI + OpenAPI generated from Zod |
 | **Validator** | `zuro-cli add validator` | Zod middleware for request validation |
@@ -171,6 +172,10 @@ After `zuro-cli init` + adding modules:
       <File name="logger.ts" />
       <File name="auth.ts" />
       <File name="errors.ts" />
+      <Folder name="uploads">
+        <File name="index.ts" />
+        <File name="provider.ts" />
+      </Folder>
     </Folder>
     <Folder name="routes">
       <File name="index.ts" />
@@ -218,13 +223,23 @@ After `zuro-cli init` + adding modules:
     <p className="text-sm text-muted-foreground">User signup, login, sessions</p>
   </a>
 
+  <a href="/docs/uploads" className="block border border-border rounded-xl p-5 bg-card hover:border-green-500/50 transition-colors no-underline">
+    <h3 className="font-bold text-foreground mb-1">→ Add Uploads</h3>
+    <p className="text-sm text-muted-foreground">S3, R2, or Cloudinary upload flows</p>
+  </a>
+
   <a href="/docs/error-handler" className="block border border-border rounded-xl p-5 bg-card hover:border-green-500/50 transition-colors no-underline">
     <h3 className="font-bold text-foreground mb-1">→ Add Error Handler</h3>
     <p className="text-sm text-muted-foreground">Consistent API error responses</p>
   </a>
 
-  <a href="/docs/validator" className="block border border-border rounded-xl p-5 bg-card hover:border-green-500/50 transition-colors no-underline md:col-span-2">
+  <a href="/docs/validator" className="block border border-border rounded-xl p-5 bg-card hover:border-green-500/50 transition-colors no-underline">
     <h3 className="font-bold text-foreground mb-1">→ Add Validator</h3>
     <p className="text-sm text-muted-foreground">Validate requests with Zod</p>
+  </a>
+
+  <a href="/docs/docs" className="block border border-border rounded-xl p-5 bg-card hover:border-green-500/50 transition-colors no-underline">
+    <h3 className="font-bold text-foreground mb-1">→ Add API Docs</h3>
+    <p className="text-sm text-muted-foreground">Document uploads, auth, and your own routes</p>
   </a>
 </div>

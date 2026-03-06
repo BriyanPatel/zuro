@@ -34,7 +34,7 @@ export type FaqItem = {
 
 export const HERO_METRICS: Metric[] = [
   { value: "60s", label: "to production-ready core" },
-  { value: "7", label: "modules available today" },
+  { value: "8", label: "modules available today" },
   { value: "0", label: "runtime lock-in" },
 ];
 
@@ -78,6 +78,12 @@ export const PAIN_POINTS = [
 ];
 
 export const MODULES: ModuleItem[] = [
+  {
+    name: "Uploads",
+    command: "zuro-cli add uploads",
+    description: "S3, R2, or Cloudinary uploads with proxy, direct, and multipart flows.",
+    icon: FileText,
+  },
   {
     name: "Database",
     command: "zuro-cli add database",

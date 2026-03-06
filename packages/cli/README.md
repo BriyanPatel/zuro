@@ -31,6 +31,7 @@ npx zuro-cli add auth
 Available modules include:
 
 - `database`
+- `uploads`
 - `auth`
 - `validator`
 - `error-handler`

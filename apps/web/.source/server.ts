@@ -1,5 +1,6 @@
 // @ts-nocheck
-import * as __fd_glob_9 from "../content/docs/validator.mdx?collection=docs"
+import * as __fd_glob_10 from "../content/docs/validator.mdx?collection=docs"
+import * as __fd_glob_9 from "../content/docs/uploads.mdx?collection=docs"
 import * as __fd_glob_8 from "../content/docs/rate-limiter.mdx?collection=docs"
 import * as __fd_glob_7 from "../content/docs/mailer.mdx?collection=docs"
 import * as __fd_glob_6 from "../content/docs/init.mdx?collection=docs"
@@ -17,4 +18,4 @@ const create = server<typeof Config, import("fumadocs-mdx/runtime/types").Intern
   }
 }>({"doc":{"passthroughs":["extractedReferences"]}});
 
-export const docs = await create.docs("docs", "content/docs", {"meta.json": __fd_glob_0, }, {"auth.mdx": __fd_glob_1, "database.mdx": __fd_glob_2, "docs.mdx": __fd_glob_3, "error-handler.mdx": __fd_glob_4, "index.mdx": __fd_glob_5, "init.mdx": __fd_glob_6, "mailer.mdx": __fd_glob_7, "rate-limiter.mdx": __fd_glob_8, "validator.mdx": __fd_glob_9, });
+export const docs = await create.docs("docs", "content/docs", {"meta.json": __fd_glob_0, }, {"auth.mdx": __fd_glob_1, "database.mdx": __fd_glob_2, "docs.mdx": __fd_glob_3, "error-handler.mdx": __fd_glob_4, "index.mdx": __fd_glob_5, "init.mdx": __fd_glob_6, "mailer.mdx": __fd_glob_7, "rate-limiter.mdx": __fd_glob_8, "uploads.mdx": __fd_glob_9, "validator.mdx": __fd_glob_10, });

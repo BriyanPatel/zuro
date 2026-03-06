@@ -49,6 +49,16 @@ import {
 import {
     isAuthModuleInstalled,
 } from "../handlers/auth.handler";
+import {
+    detectInstalledUploadsMode,
+    getUploadEnvSchemaFields,
+    injectUploadsDocs,
+    injectUploadsRoutes,
+    isUploadsModuleInstalled,
+    printUploadHints,
+    promptUploadsConfig,
+    type UploadPromptResult,
+} from "../handlers/uploads.handler";
 
 export interface AddCommandOptions {
     dialect?: string;
@@ -132,6 +142,8 @@ export const add = async (moduleName: string, options: AddCommandOptions = {}) =
     let usedDefaultSmtp = false;
     let mailerProvider: "smtp" | "resend" = "smtp";
     let shouldInstallDocsForAuth = false;
+    let uploadConfig: UploadPromptResult | null = null;
+    let uploadDatabaseDialect: DatabaseModuleName | null = null;
 
     if (resolvedModuleName === "database" || isDatabaseModule(resolvedModuleName)) {
         const result = await promptDatabaseConfig(resolvedModuleName, projectRoot, srcDir);
@@ -162,6 +174,11 @@ export const add = async (moduleName: string, options: AddCommandOptions = {}) =
         authDatabaseDialect = result.authDatabaseDialect;
     }
 
+    if (resolvedModuleName === "uploads") {
+        uploadConfig = await promptUploadsConfig(projectRoot, srcDir);
+        if (!uploadConfig) return;
+    }
+
     // ── Registry fetch & install ────────────────────────────────────
 
     const pm = resolvePackageManager(projectRoot);
@@ -188,6 +205,33 @@ export const add = async (moduleName: string, options: AddCommandOptions = {}) =
         currentStep = "module dependency resolution";
         await resolveDependencies(moduleDeps, projectRoot);
 
+        if (resolvedModuleName === "uploads" && uploadConfig) {
+            if (uploadConfig.shouldInstallDatabase) {
+                console.log(chalk.blue("\nℹ Upload metadata needs a Drizzle database. Installing database module..."));
+                await add("database");
+            }
+
+            if (uploadConfig.shouldInstallAuth) {
+                console.log(chalk.blue("\nℹ Upload auth needs the auth module. Installing auth module..."));
+                await add("auth", { yes: true });
+            }
+
+            uploadDatabaseDialect = await detectInstalledDatabaseDialect(projectRoot, srcDir);
+            if (uploadConfig.useDatabaseMetadata) {
+                if (uploadDatabaseDialect === "database-prisma-pg" || uploadDatabaseDialect === "database-prisma-mysql") {
+                    spinner.fail("Uploads metadata currently supports Drizzle-based database setup only.");
+                    console.log(chalk.yellow("ℹ Install a Drizzle database, or rerun uploads without metadata."));
+                    return;
+                }
+
+                if (!uploadDatabaseDialect) {
+                    spinner.fail("Could not detect a database setup for uploads metadata.");
+                    console.log(chalk.yellow("ℹ Install the database module first, then rerun uploads."));
+                    return;
+                }
+            }
+        }
+
         if (resolvedModuleName === "auth") {
             authDatabaseDialect = await detectInstalledDatabaseDialect(projectRoot, srcDir);
             if (authDatabaseDialect === "database-prisma-pg" || authDatabaseDialect === "database-prisma-mysql") {
@@ -210,6 +254,17 @@ export const add = async (moduleName: string, options: AddCommandOptions = {}) =
             } else {
                 runtimeDeps = ["nodemailer"];
                 devDeps = ["@types/nodemailer"];
+            }
+        }
+
+        if (resolvedModuleName === "uploads" && uploadConfig) {
+            runtimeDeps = ["multer"];
+            devDeps = ["@types/multer"];
+
+            if (uploadConfig.provider === "cloudinary") {
+                runtimeDeps.push("cloudinary");
+            } else {
+                runtimeDeps.push("@aws-sdk/client-s3", "@aws-sdk/s3-request-presigner");
             }
         }
 
@@ -246,6 +301,42 @@ export const add = async (moduleName: string, options: AddCommandOptions = {}) =
                 fetchPath = "express/lib/mailer.resend.ts";
                 expectedSha256 = undefined;
                 expectedSize = undefined;
+            }
+
+            if (resolvedModuleName === "uploads" && uploadConfig) {
+                if (file.target === "lib/uploads/provider.ts") {
+                    fetchPath = uploadConfig.provider === "cloudinary"
+                        ? "express/lib/uploads/provider.cloudinary.ts"
+                        : "express/lib/uploads/provider.s3.ts";
+                    expectedSha256 = undefined;
+                    expectedSize = undefined;
+                }
+
+                if (file.target === "lib/uploads/metadata.ts") {
+                    fetchPath = uploadConfig.useDatabaseMetadata
+                        ? "express/lib/uploads/metadata.db.ts"
+                        : "express/lib/uploads/metadata.noop.ts";
+                    expectedSha256 = undefined;
+                    expectedSize = undefined;
+                }
+
+                if (file.target === "middleware/upload-auth.ts") {
+                    fetchPath = `express/middleware/upload-auth.${uploadConfig.authMode}.ts`;
+                    expectedSha256 = undefined;
+                    expectedSize = undefined;
+                }
+
+                if (file.target === "db/schema/uploads.ts") {
+                    if (!uploadConfig.useDatabaseMetadata) {
+                        continue;
+                    }
+
+                    fetchPath = uploadDatabaseDialect === "database-mysql"
+                        ? "express/db/schema/uploads.mysql.ts"
+                        : "express/db/schema/uploads.ts";
+                    expectedSha256 = undefined;
+                    expectedSize = undefined;
+                }
             }
 
             let content = await fetchFile(fetchPath, {
@@ -342,6 +433,41 @@ export const add = async (moduleName: string, options: AddCommandOptions = {}) =
                     spinner.warn("Could not update API docs automatically");
                 }
             }
+
+            const uploadsInstalled = await isUploadsModuleInstalled(projectRoot, srcDir);
+            if (uploadsInstalled) {
+                const uploadMode = await detectInstalledUploadsMode(projectRoot);
+                if (uploadMode) {
+                    spinner.start("Adding uploads endpoints to API docs...");
+                    const uploadsDocsInjected = await injectUploadsDocs(projectRoot, srcDir, uploadMode);
+                    if (uploadsDocsInjected) {
+                        spinner.succeed("Uploads endpoints added to API docs");
+                    } else {
+                        spinner.warn("Could not update API docs automatically");
+                    }
+                }
+            }
+        }
+
+        if (resolvedModuleName === "uploads" && uploadConfig) {
+            spinner.start("Configuring upload routes...");
+            const injected = await injectUploadsRoutes(projectRoot, srcDir);
+            if (injected) {
+                spinner.succeed("Upload routes configured");
+            } else {
+                spinner.warn("Could not configure upload routes automatically");
+            }
+
+            const docsInstalled = await isDocsModuleInstalled(projectRoot, srcDir);
+            if (docsInstalled) {
+                spinner.start("Adding uploads endpoints to API docs...");
+                const docsInjected = await injectUploadsDocs(projectRoot, srcDir, uploadConfig.mode);
+                if (docsInjected) {
+                    spinner.succeed("Uploads endpoints added to API docs");
+                } else {
+                    spinner.warn("Could not update API docs automatically");
+                }
+            }
         }
 
         // ── Environment configuration ───────────────────────────────
@@ -378,6 +504,14 @@ export const add = async (moduleName: string, options: AddCommandOptions = {}) =
             });
             await updateEnvSchema(projectRoot, srcDir, envConfig.schemaFields);
 
+            spinner.succeed("Environment configured");
+        }
+
+        if (resolvedModuleName === "uploads" && uploadConfig) {
+            currentStep = "environment configuration";
+            spinner.start("Updating environment configuration...");
+            await updateEnvFile(projectRoot, uploadConfig.envVars, true);
+            await updateEnvSchema(projectRoot, srcDir, getUploadEnvSchemaFields(uploadConfig.provider));
             spinner.succeed("Environment configured");
         }
 
@@ -420,6 +554,10 @@ export const add = async (moduleName: string, options: AddCommandOptions = {}) =
 
         if (resolvedModuleName === "docs") {
             printDocsHints();
+        }
+
+        if (resolvedModuleName === "uploads" && uploadConfig) {
+            printUploadHints(uploadConfig);
         }
 
         if (resolvedModuleName === "auth" && shouldInstallDocsForAuth) {

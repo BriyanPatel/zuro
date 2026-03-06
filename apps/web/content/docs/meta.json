@@ -5,6 +5,7 @@
         "init",
         "---Modules---",
         "database",
+        "uploads",
         "validator",
         "error-handler",
         "auth",

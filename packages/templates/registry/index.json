@@ -301,6 +301,65 @@
         "express-rate-limit"
       ],
       "devDependencies": []
+    },
+    "uploads": {
+      "type": "block",
+      "files": [
+        {
+          "path": "express/lib/uploads/index.ts",
+          "target": "lib/uploads/index.ts",
+          "type": "library"
+        },
+        {
+          "path": "express/lib/uploads/types.ts",
+          "target": "lib/uploads/types.ts",
+          "type": "library"
+        },
+        {
+          "path": "express/lib/uploads/provider.s3.ts",
+          "target": "lib/uploads/provider.ts",
+          "type": "library"
+        },
+        {
+          "path": "express/lib/uploads/metadata.noop.ts",
+          "target": "lib/uploads/metadata.ts",
+          "type": "library"
+        },
+        {
+          "path": "express/lib/uploads/proxy.ts",
+          "target": "lib/uploads/proxy.ts",
+          "type": "library"
+        },
+        {
+          "path": "express/controllers/uploads.controller.ts",
+          "target": "controllers/uploads.controller.ts",
+          "type": "library"
+        },
+        {
+          "path": "express/routes/uploads.routes.ts",
+          "target": "routes/uploads.routes.ts",
+          "type": "library"
+        },
+        {
+          "path": "express/middleware/upload-auth.none.ts",
+          "target": "middleware/upload-auth.ts",
+          "type": "library"
+        },
+        {
+          "path": "express/db/schema/uploads.ts",
+          "target": "db/schema/uploads.ts",
+          "type": "library"
+        }
+      ],
+      "moduleDependencies": [
+        "core"
+      ],
+      "dependencies": [
+        "multer"
+      ],
+      "devDependencies": [
+        "@types/multer"
+      ]
     }
   }
 }

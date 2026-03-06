@@ -14,6 +14,7 @@ export function LandingFooter() {
           <Link href="/docs/init" className="block hover:text-zinc-200">Init</Link>
           <Link href="/docs" className="block hover:text-zinc-200">Documentation</Link>
           <Link href="/docs/database" className="block hover:text-zinc-200">Database</Link>
+          <Link href="/docs/uploads" className="block hover:text-zinc-200">Uploads</Link>
           <Link href="/docs/auth" className="block hover:text-zinc-200">Auth</Link>
         </div>
 
