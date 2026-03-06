@@ -55,6 +55,8 @@ Works with npm, pnpm, and bun.
 
 > **Smart dependency resolution:** Running `zuro-cli add auth` automatically installs `database` and `error-handler` if they're not already present. No need to remember the order.
 
+> **Uploads is provider-aware:** Running `zuro-cli add uploads` installs `error-handler` automatically, and can also set up `auth` and `database` based on your upload choices.
+
 ---
 
 ## What Gets Generated

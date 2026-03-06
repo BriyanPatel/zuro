@@ -1,6 +1,7 @@
 import type { Request } from "express";
 import { randomUUID } from "node:crypto";
 import { env } from "../../env";
+import { BadRequestError, UnauthorizedError } from "../errors";
 import {
     abortMultipartUpload,
     completeDirectUploadRequest,
@@ -135,7 +136,7 @@ export function createUploadKey(originalName: string, ownerId?: string | null) {
 
 export function assertConfiguredMode(expectedMode: UploadMode) {
     if (getUploadMode() !== expectedMode) {
-        throw new Error(`Uploads module is configured for ${getUploadMode()} mode, not ${expectedMode}.`);
+        throw new BadRequestError(`Uploads module is configured for ${getUploadMode()} mode, not ${expectedMode}.`);
     }
 }
 
@@ -145,13 +146,13 @@ export function assertAllowedMimeType(mimeType: string) {
     }
 
     if (!allowedMimeTypes.includes(mimeType)) {
-        throw new Error(`File type '${mimeType}' is not allowed for the ${getUploadPreset()} preset.`);
+        throw new BadRequestError(`File type '${mimeType}' is not allowed for the ${getUploadPreset()} preset.`);
     }
 }
 
 export function assertUploadActorAllowed(ownerId?: string | null) {
     if (getUploadAuthMode() === "required" && !ownerId) {
-        throw new Error("Authentication is required for uploads.");
+        throw new UnauthorizedError("Authentication is required for uploads.");
     }
 }
 
@@ -161,7 +162,7 @@ function assertPrivateAccessAllowed(ownerId?: string | null) {
     }
 
     if (getUploadAuthMode() !== "none" && !ownerId) {
-        throw new Error("Authentication is required to access private uploads.");
+        throw new UnauthorizedError("Authentication is required to access private uploads.");
     }
 }
 
@@ -171,12 +172,12 @@ function assertOwnerMatch(storageKey: string, ownerId?: string | null, record?: 
     }
 
     if (record?.ownerId && record.ownerId !== ownerId) {
-        throw new Error("You do not have access to this upload.");
+        throw new UnauthorizedError("You do not have access to this upload.");
     }
 
     const expectedPrefix = `${getKeyPrefix()}/users/${ownerId}/`;
     if (!record?.ownerId && !storageKey.startsWith(expectedPrefix)) {
-        throw new Error("You do not have access to this upload.");
+        throw new UnauthorizedError("You do not have access to this upload.");
     }
 }
 

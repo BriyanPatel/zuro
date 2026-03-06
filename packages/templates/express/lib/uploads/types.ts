@@ -1,8 +1,8 @@
 export type UploadProvider = "s3" | "r2" | "cloudinary";
 export type UploadMode = "proxy" | "direct" | "large";
-export type UploadAuthMode = "required" | "optional" | "none";
+export type UploadAuthMode = "required" | "none";
 export type UploadAccess = "public" | "private";
-export type UploadPreset = "image" | "document" | "video" | "mixed";
+export type UploadPreset = "image" | "document" | "video";
 
 export interface UploadDescriptor {
     key: string;

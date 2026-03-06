@@ -3,7 +3,7 @@ title: Uploads
 description: Add S3, R2, or Cloudinary uploads with proxy, direct, or multipart flows
 ---
 
-Scaffold a production-minded upload system with provider-aware defaults, auth-aware routes, and optional metadata tracking.
+Scaffold a production-minded upload system with provider-aware defaults, auth-aware routes, and optional database metadata tracking.
 
 ---
 
@@ -37,10 +37,12 @@ During install, Zuro asks for:
 
 - provider: `s3`, `r2`, or `cloudinary`
 - mode: `proxy`, `direct`, or `large`
-- upload access: authenticated, optional auth, or public
+- upload access: authenticated or public
 - file visibility: private or public
-- preset: image, document, video, or mixed
+- preset: image, document, or video
 - metadata storage: database or none
+
+Zuro writes the exact provider env vars into `.env` with placeholders, so you can fill credentials after install instead of pasting secrets into the CLI.
 
 ---
 
@@ -129,6 +131,19 @@ Large mode scaffolds multipart upload routes for S3 and R2:
 - `POST /api/uploads/multipart/abort`
 
 Cloudinary is intentionally not scaffolded for this mode in v1. For large uploads, use S3 or R2.
+
+---
+
+## Dependencies
+
+`uploads` always installs:
+
+- `error-handler`
+
+Depending on your answers, it can also install:
+
+- `auth` for authenticated uploads
+- `database` for metadata persistence
 
 ---
 

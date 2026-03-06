@@ -206,6 +206,12 @@ export const add = async (moduleName: string, options: AddCommandOptions = {}) =
         await resolveDependencies(moduleDeps, projectRoot);
 
         if (resolvedModuleName === "uploads" && uploadConfig) {
+            const errorHandlerInstalled = fs.existsSync(path.join(projectRoot, srcDir, "lib", "errors.ts"));
+            if (!errorHandlerInstalled) {
+                console.log(chalk.blue("\nℹ Uploads needs the error-handler module. Installing error-handler..."));
+                await add("error-handler");
+            }
+
             if (uploadConfig.shouldInstallDatabase) {
                 console.log(chalk.blue("\nℹ Upload metadata needs a Drizzle database. Installing database module..."));
                 await add("database");

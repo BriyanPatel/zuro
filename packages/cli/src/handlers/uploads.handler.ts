@@ -7,9 +7,9 @@ import { readZuroConfig } from "../utils/config";
 
 export type UploadProvider = "s3" | "r2" | "cloudinary";
 export type UploadMode = "proxy" | "direct" | "large";
-export type UploadAuthMode = "required" | "optional" | "none";
+export type UploadAuthMode = "required" | "none";
 export type UploadAccess = "private" | "public";
-export type UploadPreset = "image" | "document" | "video" | "mixed";
+export type UploadPreset = "image" | "document" | "video";
 
 interface UploadPresetConfig {
     mimeTypes: string[];
@@ -38,18 +38,6 @@ const UPLOAD_PRESETS: Record<UploadPreset, UploadPresetConfig> = {
         maxFileSize: 100 * 1024 * 1024,
         maxFiles: 1,
     },
-    mixed: {
-        mimeTypes: [
-            "image/jpeg",
-            "image/png",
-            "image/webp",
-            "application/pdf",
-            "text/plain",
-            "video/mp4",
-        ],
-        maxFileSize: 25 * 1024 * 1024,
-        maxFiles: 5,
-    },
 };
 
 export interface UploadPromptResult {
@@ -68,9 +56,9 @@ export function getUploadEnvSchemaFields(provider: UploadProvider) {
     const shared = [
         { name: "UPLOAD_PROVIDER", schema: `z.enum(["s3", "r2", "cloudinary"])` },
         { name: "UPLOAD_MODE", schema: `z.enum(["proxy", "direct", "large"])` },
-        { name: "UPLOAD_AUTH_MODE", schema: `z.enum(["required", "optional", "none"])` },
+        { name: "UPLOAD_AUTH_MODE", schema: `z.enum(["required", "none"])` },
         { name: "UPLOAD_FILE_ACCESS", schema: `z.enum(["private", "public"])` },
-        { name: "UPLOAD_FILE_PRESET", schema: `z.enum(["image", "document", "video", "mixed"])` },
+        { name: "UPLOAD_FILE_PRESET", schema: `z.enum(["image", "document", "video"])` },
         { name: "UPLOAD_KEY_PREFIX", schema: "z.string().min(1)" },
         { name: "UPLOAD_ALLOWED_MIME", schema: "z.string().min(1)" },
         { name: "UPLOAD_MAX_FILE_SIZE", schema: "z.coerce.number().positive()" },
@@ -110,111 +98,25 @@ function hasDrizzleDatabase(config: Awaited<ReturnType<typeof readZuroConfig>> |
     return config?.database?.orm === "drizzle";
 }
 
-async function promptCredentials(provider: UploadProvider): Promise<Record<string, string> | null> {
-    console.log(chalk.dim("  Tip: Leave fields blank to use placeholders and configure later.\n"));
-
+function getProviderEnvDefaults(provider: UploadProvider): Record<string, string> {
     if (provider === "cloudinary") {
-        const response = await prompts([
-            {
-                type: "text",
-                name: "cloudName",
-                message: "Cloudinary cloud name",
-                initial: "",
-            },
-            {
-                type: "text",
-                name: "apiKey",
-                message: "Cloudinary API key",
-                initial: "",
-            },
-            {
-                type: "password",
-                name: "apiSecret",
-                message: "Cloudinary API secret",
-            },
-            {
-                type: "text",
-                name: "folder",
-                message: "Cloudinary folder",
-                initial: "uploads",
-            },
-            {
-                type: "text",
-                name: "uploadPreset",
-                message: "Cloudinary upload preset (optional)",
-                initial: "",
-            },
-        ]);
-
-        if (response.cloudName === undefined) {
-            console.log(chalk.yellow("Operation cancelled."));
-            return null;
-        }
-
-        const values: Record<string, string> = {
-            CLOUDINARY_CLOUD_NAME: response.cloudName?.trim() || "your-cloud-name",
-            CLOUDINARY_API_KEY: response.apiKey?.trim() || "your-api-key",
-            CLOUDINARY_API_SECRET: response.apiSecret?.trim() || "your-api-secret",
-            CLOUDINARY_FOLDER: response.folder?.trim() || "uploads",
-            CLOUDINARY_UPLOAD_PRESET: response.uploadPreset?.trim() || "",
+        return {
+            CLOUDINARY_CLOUD_NAME: "your-cloud-name",
+            CLOUDINARY_API_KEY: "your-api-key",
+            CLOUDINARY_API_SECRET: "your-api-secret",
+            CLOUDINARY_FOLDER: "uploads",
+            CLOUDINARY_UPLOAD_PRESET: "",
         };
-
-        return values;
     }
 
-    const response = await prompts([
-        {
-            type: "text",
-            name: "bucket",
-            message: `${provider.toUpperCase()} bucket name`,
-            initial: "",
-        },
-        {
-            type: "text",
-            name: "region",
-            message: `${provider.toUpperCase()} region`,
-            initial: provider === "r2" ? "auto" : "us-east-1",
-        },
-        {
-            type: "text",
-            name: "endpoint",
-            message: provider === "r2" ? "R2 S3 endpoint" : "Custom S3 endpoint (optional)",
-            initial: provider === "r2" ? "https://<account-id>.r2.cloudflarestorage.com" : "",
-        },
-        {
-            type: "text",
-            name: "accessKeyId",
-            message: "Access key ID",
-            initial: "",
-        },
-        {
-            type: "password",
-            name: "secretAccessKey",
-            message: "Secret access key",
-        },
-        {
-            type: "text",
-            name: "publicBaseUrl",
-            message: "Public base URL (optional)",
-            initial: "",
-        },
-    ]);
-
-    if (response.bucket === undefined) {
-        console.log(chalk.yellow("Operation cancelled."));
-        return null;
-    }
-
-    const values: Record<string, string> = {
-        UPLOAD_BUCKET: response.bucket?.trim() || `your-${provider}-bucket`,
-        UPLOAD_REGION: response.region?.trim() || (provider === "r2" ? "auto" : "us-east-1"),
-        UPLOAD_ENDPOINT: response.endpoint?.trim() || (provider === "r2" ? "https://<account-id>.r2.cloudflarestorage.com" : ""),
-        UPLOAD_ACCESS_KEY_ID: response.accessKeyId?.trim() || "your-access-key-id",
-        UPLOAD_SECRET_ACCESS_KEY: response.secretAccessKey?.trim() || "your-secret-access-key",
-        UPLOAD_PUBLIC_BASE_URL: response.publicBaseUrl?.trim() || "",
+    return {
+        UPLOAD_BUCKET: `your-${provider}-bucket`,
+        UPLOAD_REGION: provider === "r2" ? "auto" : "us-east-1",
+        UPLOAD_ENDPOINT: provider === "r2" ? "https://<account-id>.r2.cloudflarestorage.com" : "",
+        UPLOAD_ACCESS_KEY_ID: "your-access-key-id",
+        UPLOAD_SECRET_ACCESS_KEY: "your-secret-access-key",
+        UPLOAD_PUBLIC_BASE_URL: "",
     };
-
-    return values;
 }
 
 function buildSharedEnvVars(
@@ -279,10 +181,9 @@ export async function promptUploadsConfig(
             message: "Who can upload?",
             choices: [
                 { title: "Authenticated only", value: "required" },
-                { title: "Optional auth", value: "optional" },
                 { title: "Public", value: "none" },
             ],
-            initial: authInstalled ? 0 : 2,
+            initial: authInstalled ? 0 : 1,
         },
         {
             type: "select",
@@ -302,15 +203,8 @@ export async function promptUploadsConfig(
                 { title: "Image", value: "image" },
                 { title: "Document", value: "document" },
                 { title: "Video", value: "video" },
-                { title: "Mixed", value: "mixed" },
             ],
             initial: 0,
-        },
-        {
-            type: "confirm",
-            name: "useDefaults",
-            message: "Use recommended upload limits for this preset?",
-            initial: true,
         },
     ]);
 
@@ -331,7 +225,7 @@ export async function promptUploadsConfig(
         return null;
     }
 
-    if (provider === "cloudinary" && (preset === "document" || preset === "mixed")) {
+    if (provider === "cloudinary" && preset === "document") {
         const warning = await prompts({
             type: "confirm",
             name: "continue",
@@ -346,49 +240,17 @@ export async function promptUploadsConfig(
     }
 
     const presetDefaults = UPLOAD_PRESETS[preset];
-    let maxFileSize = presetDefaults.maxFileSize;
-    let maxFiles = presetDefaults.maxFiles;
-
-    if (!initial.useDefaults) {
-        const custom = await prompts([
-            {
-                type: "number",
-                name: "maxFileSizeMb",
-                message: "Max file size (MB)",
-                initial: Math.max(1, Math.round(presetDefaults.maxFileSize / (1024 * 1024))),
-                min: 1,
-            },
-            {
-                type: "number",
-                name: "maxFiles",
-                message: "Max files per request",
-                initial: presetDefaults.maxFiles,
-                min: 1,
-                max: 20,
-            },
-        ]);
-
-        if (custom.maxFileSizeMb === undefined) {
-            console.log(chalk.yellow("Operation cancelled."));
-            return null;
-        }
-
-        maxFileSize = Number(custom.maxFileSizeMb) * 1024 * 1024;
-        maxFiles = Number(custom.maxFiles);
-    }
 
     let useDatabaseMetadata = false;
     let shouldInstallDatabase = false;
 
     const metadataPrompt = await prompts({
-        type: "select",
+        type: "confirm",
         name: "metadata",
-        message: "Upload metadata storage?",
-        choices: [
-            { title: drizzleInstalled ? "Database" : "Install database + track uploads", value: "db" },
-            { title: "No metadata", value: "none" },
-        ],
-        initial: 0,
+        message: drizzleInstalled
+            ? "Store upload metadata in your database?"
+            : "Install database and store upload metadata?",
+        initial: true,
     });
 
     if (metadataPrompt.metadata === undefined) {
@@ -396,7 +258,7 @@ export async function promptUploadsConfig(
         return null;
     }
 
-    if (metadataPrompt.metadata === "db") {
+    if (metadataPrompt.metadata === true) {
         useDatabaseMetadata = true;
 
         if (!projectConfig?.database) {
@@ -439,11 +301,6 @@ export async function promptUploadsConfig(
         shouldInstallAuth = true;
     }
 
-    const providerEnv = await promptCredentials(provider);
-    if (!providerEnv) {
-        return null;
-    }
-
     return {
         provider,
         mode,
@@ -454,8 +311,8 @@ export async function promptUploadsConfig(
         shouldInstallAuth,
         shouldInstallDatabase,
         envVars: {
-            ...buildSharedEnvVars(provider, mode, authMode, access, preset, maxFileSize, maxFiles),
-            ...providerEnv,
+            ...buildSharedEnvVars(provider, mode, authMode, access, preset, presetDefaults.maxFileSize, presetDefaults.maxFiles),
+            ...getProviderEnvDefaults(provider),
         },
     };
 }
@@ -717,6 +574,7 @@ export async function injectUploadsDocs(
 export function printUploadHints(result: UploadPromptResult) {
     console.log(chalk.yellow("ℹ Upload routes are mounted at: /api/uploads"));
     console.log(chalk.yellow(`ℹ Provider: ${result.provider} · Mode: ${result.mode} · Access: ${result.access}`));
+    console.log(chalk.yellow("ℹ Fill the generated upload env vars in .env before testing uploads."));
 
     if (result.mode === "proxy") {
         console.log(chalk.yellow("ℹ Reuse uploadSingle()/uploadArray() from src/lib/uploads/proxy.ts in your own form + file routes."));

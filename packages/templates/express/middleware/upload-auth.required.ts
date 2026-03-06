@@ -1,10 +1,11 @@
 import type { NextFunction, Request, Response } from "express";
 import { fromNodeHeaders } from "better-auth/node";
 import { auth } from "../lib/auth";
+import { UnauthorizedError } from "../lib/errors";
 
 export const uploadAuth = async (
     req: Request & { uploadUser?: { id: string } | null },
-    res: Response,
+    _res: Response,
     next: NextFunction
 ) => {
     try {
@@ -13,11 +14,7 @@ export const uploadAuth = async (
         });
 
         if (!session) {
-            res.status(401).json({
-                status: "error",
-                code: "UNAUTHORIZED",
-                message: "Authentication is required for uploads.",
-            });
+            next(new UnauthorizedError("Authentication is required for uploads."));
             return;
         }
 
