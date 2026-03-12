@@ -2,8 +2,6 @@
 title: Init
 description: Add the init module to scaffold a production-ready Express + TypeScript backend
 ---
-# init
-
 ## Overview
 
 Scaffold a production-ready Express + TypeScript backend foundation in one command.
@@ -39,11 +37,11 @@ tsconfig.json
 zuro.json
 ```
 
-`src/app.ts` sets up Express, Helmet, CORS, JSON body parsing, `/api`, and `/health`.
-`src/server.ts` starts the server and handles graceful shutdown.
-`src/env.ts` validates environment variables with Zod.
-`src/routes/index.ts` is your root API router.
-`src/lib/logger.ts` configures Pino logging.
+- `src/app.ts`: sets up Express, Helmet, CORS, JSON body parsing, `/api`, and `/health`.
+- `src/server.ts`: starts the server and handles graceful shutdown.
+- `src/env.ts`: validates environment variables with Zod.
+- `src/routes/index.ts`: root API router.
+- `src/lib/logger.ts`: configures Pino logging.
 
 ---
 
@@ -74,7 +72,11 @@ Example response:
 
 ## How It Works
 
-Client -> Express App (`app.ts`) -> Middleware (`helmet`, `cors`, `json`) -> Route (`/health` or `/api/*`) -> Logger/Env (`logger.ts`, `env.ts`) -> Response
+1. Client calls the API.
+2. Express app (`app.ts`) runs middleware (`helmet`, `cors`, `json`).
+3. Request is routed to `/health` or `/api/*`.
+4. Runtime uses `logger.ts` and validated config from `env.ts`.
+5. Response is returned.
 
 ---
 
@@ -92,8 +94,8 @@ NODE_ENV=development
 
 ## API Reference
 
-`GET /health`: Returns service health and timestamp.
-`/api/*`: Root API namespace (empty router by default, add your endpoints in `src/routes/index.ts`).
+- `GET /health`: returns service health and timestamp.
+- `/api/*`: root API namespace (empty by default, add endpoints in `src/routes/index.ts`).
 
 ---
 
@@ -128,7 +130,7 @@ npx zuro-cli add uploads
 
 ## Example Use Cases
 
-User authentication foundation: scaffold first, then add `auth`.
-Webhook processing service: start with `/api` routes and structured logging.
-Background jobs admin API: bootstrap quickly with health checks and env validation.
-File uploads backend: scaffold with `init`, then add `uploads` and `database`.
+- User authentication foundation: scaffold first, then add `auth`.
+- Webhook processing service: start with `/api` routes and structured logging.
+- Background jobs admin API: bootstrap quickly with health checks and env validation.
+- File uploads backend: scaffold with `init`, then add `uploads` and `database`.

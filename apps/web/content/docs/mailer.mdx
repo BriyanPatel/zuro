@@ -2,8 +2,6 @@
 title: Mailer
 description: Add production-ready email sending with SMTP or Resend
 ---
-# mailer
-
 ## Overview
 
 Add production-ready transactional email sending to your backend.
@@ -31,9 +29,9 @@ src/
     └ welcome.ts
 ```
 
-`lib/mailer.ts`: email sender implementation (`nodemailer` for SMTP, `resend` for Resend).
-`lib/mail-templates/index.ts`: template registry used by `sendMail({ template })`.
-`lib/mail-templates/welcome.ts`: starter HTML template.
+- `lib/mailer.ts`: email sender implementation (`nodemailer` for SMTP, `resend` for Resend).
+- `lib/mail-templates/index.ts`: template registry used by `sendMail({ template })`.
+- `lib/mail-templates/welcome.ts`: starter HTML template.
 
 ---
 
@@ -72,7 +70,10 @@ Example response:
 
 ## How It Works
 
-Service/Route -> `sendMail(options)` -> resolve template or raw html/text -> provider client (SMTP or Resend) -> provider API -> send result
+1. Service or route calls `sendMail(options)`.
+2. Mailer resolves template content or uses raw `html`/`text`.
+3. Provider client (SMTP or Resend) sends the email.
+4. Provider response is returned.
 
 ---
 
@@ -95,26 +96,26 @@ RESEND_API_KEY=re_your_api_key
 MAIL_FROM=onboarding@resend.dev
 ```
 
-`SMTP_HOST`: SMTP server hostname.
-`SMTP_PORT`: SMTP server port (`465` for secure SSL, `587` for STARTTLS).
-`SMTP_USER`: SMTP username/login.
-`SMTP_PASS`: SMTP password/app password.
-`RESEND_API_KEY`: Resend API token.
-`MAIL_FROM`: default sender address for all emails.
+- `SMTP_HOST`: SMTP server hostname.
+- `SMTP_PORT`: SMTP server port (`465` for secure SSL, `587` for STARTTLS).
+- `SMTP_USER`: SMTP username/login.
+- `SMTP_PASS`: SMTP password/app password.
+- `RESEND_API_KEY`: Resend API token.
+- `MAIL_FROM`: default sender address for all emails.
 
 ---
 
 ## API Reference
 
-`sendMail({ to, subject, html?, text?, template?, data? })`: sends an email.
-`to`: single email or list of emails.
-`subject`: message subject.
-`html` / `text`: raw content payload.
-`template` + `data`: render a registered template from `lib/mail-templates/index.ts`.
+- `sendMail({ to, subject, html?, text?, template?, data? })`: sends an email.
+- `to`: single email or list of emails.
+- `subject`: message subject.
+- `html` / `text`: raw content payload.
+- `template` + `data`: render a registered template from `lib/mail-templates/index.ts`.
 
 Errors:
-`NotFoundError`: template key not found.
-`BadRequestError`: neither `html`, `text`, nor `template` provided.
+- `NotFoundError`: template key not found.
+- `BadRequestError`: neither `html`, `text`, nor `template` provided.
 
 ---
 
@@ -162,7 +163,7 @@ npx zuro add mailer
 
 ## Example Use Cases
 
-User onboarding and welcome emails.
-Password reset and verification links.
-Job/queue completion notifications.
-Admin alerts and operational status emails.
+- User onboarding and welcome emails.
+- Password reset and verification links.
+- Job/queue completion notifications.
+- Admin alerts and operational status emails.

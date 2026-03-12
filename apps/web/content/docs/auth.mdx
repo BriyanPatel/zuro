@@ -2,8 +2,6 @@
 title: Auth
 description: Add production-ready authentication with Better Auth
 ---
-# auth
-
 ## Overview
 
 Add production-ready email/password authentication and session-based user access to your backend.
@@ -37,11 +35,11 @@ src/app.ts         # updated: mounts /api/auth handler
 src/routes/index.ts # updated: mounts /users routes
 ```
 
-`lib/auth.ts`: Better Auth setup (`basePath: /api/auth`) with Drizzle adapter.
-`controllers/user.controller.ts`: authenticated profile handler (`/api/users/me`).
-`routes/user.routes.ts`: user routes wired with async error handling.
-`db/schema/auth.ts`: auth tables (`user`, `session`, `account`, `verification`).
-`app.ts` and `routes/index.ts`: route mounts injected automatically.
+- `lib/auth.ts`: Better Auth setup (`basePath: /api/auth`) with Drizzle adapter.
+- `controllers/user.controller.ts`: authenticated profile handler (`/api/users/me`).
+- `routes/user.routes.ts`: user routes wired with async error handling.
+- `db/schema/auth.ts`: auth tables (`user`, `session`, `account`, `verification`).
+- `app.ts` and `routes/index.ts`: route mounts injected automatically.
 
 ---
 
@@ -80,7 +78,11 @@ Example response:
 
 ## How It Works
 
-Client -> `/api/auth/*` (Better Auth handler) -> session/cookie issued -> `/api/users/me` -> `auth.api.getSession(...)` -> database-backed session lookup -> response
+1. Client calls `/api/auth/*`.
+2. Better Auth handler processes auth flow and issues session/cookie.
+3. Protected routes call `auth.api.getSession(...)`.
+4. Session is resolved from database-backed storage.
+5. Authenticated response is returned (for example `/api/users/me`).
 
 ---
 
@@ -92,19 +94,19 @@ BETTER_AUTH_URL=http://localhost:3000
 DATABASE_URL=postgresql://postgres@localhost:5432/mydb
 ```
 
-`BETTER_AUTH_SECRET`: signing/encryption secret for auth sessions and tokens.
-`BETTER_AUTH_URL`: backend base URL used by Better Auth.
-`DATABASE_URL`: Drizzle database connection for auth tables and sessions.
+- `BETTER_AUTH_SECRET`: signing/encryption secret for auth sessions and tokens.
+- `BETTER_AUTH_URL`: backend base URL used by Better Auth.
+- `DATABASE_URL`: Drizzle database connection for auth tables and sessions.
 
 ---
 
 ## API Reference
 
-`POST /api/auth/sign-up/email`: register user with email/password.
-`POST /api/auth/sign-in/email`: authenticate user and create session.
-`POST /api/auth/sign-out`: invalidate current session.
-`GET /api/auth/get-session`: read current session from cookie.
-`GET /api/users/me`: return authenticated user profile from active session.
+- `POST /api/auth/sign-up/email`: register user with email/password.
+- `POST /api/auth/sign-in/email`: authenticate user and create session.
+- `POST /api/auth/sign-out`: invalidate current session.
+- `GET /api/auth/get-session`: read current session from cookie.
+- `GET /api/users/me`: return authenticated user profile from active session.
 
 ---
 
@@ -152,7 +154,7 @@ Optional docs integration:
 
 ## Example Use Cases
 
-User signup/login flows for web or mobile backends.
-Session-based dashboard/profile APIs.
-Protecting private routes with server-side session checks.
-Multi-module apps that combine `auth` with `uploads` and `database`.
+- User signup/login flows for web or mobile backends.
+- Session-based dashboard/profile APIs.
+- Protecting private routes with server-side session checks.
+- Multi-module apps that combine `auth` with `uploads` and `database`.

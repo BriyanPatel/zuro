@@ -2,8 +2,6 @@
 title: API Docs
 description: Add OpenAPI + Scalar API documentation to your backend
 ---
-# docs
-
 ## Overview
 
 Add production-ready OpenAPI generation and interactive API docs to your backend.
@@ -31,9 +29,9 @@ src/
 └ routes/index.ts   # updated to mount /docs
 ```
 
-`src/lib/openapi.ts`: OpenAPI registry + document generator.
-`src/routes/docs.routes.ts`: serves JSON spec and Scalar UI.
-`src/routes/index.ts`: mounts docs routes at `/api/docs`.
+- `src/lib/openapi.ts`: OpenAPI registry + document generator.
+- `src/routes/docs.routes.ts`: serves JSON spec and Scalar UI.
+- `src/routes/index.ts`: mounts docs routes at `/api/docs`.
 
 ---
 
@@ -73,7 +71,10 @@ Open interactive docs at `http://localhost:3000/api/docs`.
 
 ## How It Works
 
-Client -> `/api/docs` route -> Scalar UI -> fetches `/api/docs/openapi.json` -> `createOpenApiDocument()` builds spec from Zod/OpenAPI registry -> response
+1. Client opens `/api/docs`.
+2. Scalar UI loads and requests `/api/docs/openapi.json`.
+3. `createOpenApiDocument()` builds the spec from the OpenAPI registry.
+4. Spec is returned and rendered in the docs UI.
 
 ---
 
@@ -83,15 +84,15 @@ Client -> `/api/docs` route -> Scalar UI -> fetches `/api/docs/openapi.json` -> 
 # No required environment variables
 ```
 
-`docs` is code-configured in `src/lib/openapi.ts`.
+- `docs` is code-configured in `src/lib/openapi.ts`.
 
 ---
 
 ## API Reference
 
-`GET /api/docs`: interactive Scalar docs UI.
-`GET /api/docs/openapi.json`: generated OpenAPI spec.
-`createOpenApiDocument()`: exports the OpenAPI document builder.
+- `GET /api/docs`: interactive Scalar docs UI.
+- `GET /api/docs/openapi.json`: generated OpenAPI spec.
+- `createOpenApiDocument()`: exports the OpenAPI document builder.
 
 ---
 
@@ -140,7 +141,7 @@ When installed together, auth/uploads endpoints are injected into `openapi.ts`.
 
 ## Example Use Cases
 
-Internal API reference for backend teams.
-Client SDK generation from OpenAPI JSON.
-QA/UAT testing with interactive endpoint docs.
-Publishing auth and upload workflows in one API portal.
+- Internal API reference for backend teams.
+- Client SDK generation from OpenAPI JSON.
+- QA/UAT testing with interactive endpoint docs.
+- Publishing auth and upload workflows in one API portal.

@@ -2,8 +2,6 @@
 title: Uploads
 description: Add production-ready uploads with S3, R2, or Cloudinary
 ---
-# uploads
-
 ## Overview
 
 Add production-ready file upload flows (proxy, direct, multipart) to your backend.
@@ -37,12 +35,12 @@ src/
 src/db/schema/uploads.ts   # only when metadata storage is enabled
 ```
 
-`controllers/uploads.controller.ts`: input validation + HTTP handlers.
-`routes/uploads.routes.ts`: mode-specific endpoints under `/api/uploads`.
-`middleware/upload-auth.ts`: required/public upload access gate.
-`lib/uploads/provider.ts`: provider implementation (S3/R2/Cloudinary).
-`lib/uploads/metadata.ts`: metadata persistence or noop adapter.
-`lib/uploads/proxy.ts`: `multer` middleware for proxy uploads.
+- `controllers/uploads.controller.ts`: input validation + HTTP handlers.
+- `routes/uploads.routes.ts`: mode-specific endpoints under `/api/uploads`.
+- `middleware/upload-auth.ts`: required/public upload access gate.
+- `lib/uploads/provider.ts`: provider implementation (S3/R2/Cloudinary).
+- `lib/uploads/metadata.ts`: metadata persistence or noop adapter.
+- `lib/uploads/proxy.ts`: `multer` middleware for proxy uploads.
 
 ---
 
@@ -82,7 +80,12 @@ Example response:
 
 ## How It Works
 
-Client -> `/api/uploads/*` route -> `UploadsController` -> `lib/uploads` service -> provider client (S3/R2/Cloudinary) -> optional metadata store -> response
+1. Client calls an uploads endpoint.
+2. Route in `/api/uploads/*` forwards to `UploadsController`.
+3. Controller validates input and calls `lib/uploads` service functions.
+4. Service talks to provider client (S3, R2, or Cloudinary).
+5. Metadata is optionally stored.
+6. Standardized upload response is returned.
 
 ---
 
@@ -109,24 +112,24 @@ UPLOAD_SECRET_ACCESS_KEY=...
 UPLOAD_PUBLIC_BASE_URL=
 ```
 
-`UPLOAD_PROVIDER`: `s3`, `r2`, or `cloudinary`.
-`UPLOAD_MODE`: upload flow (`proxy`, `direct`, `large`).
-`UPLOAD_AUTH_MODE`: who can upload (`required` or `none`).
-`UPLOAD_FILE_ACCESS`: resulting file access level (`private` or `public`).
-`UPLOAD_FILE_PRESET`: preset defaults for allowed MIME and limits.
-`UPLOAD_KEY_PREFIX`: storage key prefix.
-`UPLOAD_ALLOWED_MIME`: comma-separated allowed MIME types.
-`UPLOAD_MAX_FILE_SIZE`: max bytes per file.
-`UPLOAD_MAX_FILES`: max files accepted by proxy middleware.
-`UPLOAD_DIRECT_URL_TTL_SECONDS`: expiry for direct upload signed URLs.
-`UPLOAD_ACCESS_URL_TTL_SECONDS`: expiry for private access URLs.
-`UPLOAD_MULTIPART_PART_SIZE`: suggested part size for multipart uploads.
-`UPLOAD_BUCKET`: S3/R2 bucket name.
-`UPLOAD_REGION`: S3 region or `auto` for R2.
-`UPLOAD_ENDPOINT`: custom endpoint (used for R2/S3-compatible storage).
-`UPLOAD_ACCESS_KEY_ID`: provider access key.
-`UPLOAD_SECRET_ACCESS_KEY`: provider secret key.
-`UPLOAD_PUBLIC_BASE_URL`: optional CDN/public base URL.
+- `UPLOAD_PROVIDER`: `s3`, `r2`, or `cloudinary`.
+- `UPLOAD_MODE`: upload flow (`proxy`, `direct`, `large`).
+- `UPLOAD_AUTH_MODE`: who can upload (`required` or `none`).
+- `UPLOAD_FILE_ACCESS`: resulting file access level (`private` or `public`).
+- `UPLOAD_FILE_PRESET`: preset defaults for allowed MIME and limits.
+- `UPLOAD_KEY_PREFIX`: storage key prefix.
+- `UPLOAD_ALLOWED_MIME`: comma-separated allowed MIME types.
+- `UPLOAD_MAX_FILE_SIZE`: max bytes per file.
+- `UPLOAD_MAX_FILES`: max files accepted by proxy middleware.
+- `UPLOAD_DIRECT_URL_TTL_SECONDS`: expiry for direct upload signed URLs.
+- `UPLOAD_ACCESS_URL_TTL_SECONDS`: expiry for private access URLs.
+- `UPLOAD_MULTIPART_PART_SIZE`: suggested part size for multipart uploads.
+- `UPLOAD_BUCKET`: S3/R2 bucket name.
+- `UPLOAD_REGION`: S3 region or `auto` for R2.
+- `UPLOAD_ENDPOINT`: custom endpoint (used for R2/S3-compatible storage).
+- `UPLOAD_ACCESS_KEY_ID`: provider access key.
+- `UPLOAD_SECRET_ACCESS_KEY`: provider secret key.
+- `UPLOAD_PUBLIC_BASE_URL`: optional CDN/public base URL.
 
 Cloudinary keys:
 
@@ -138,31 +141,28 @@ CLOUDINARY_FOLDER=uploads
 CLOUDINARY_UPLOAD_PRESET=
 ```
 
-`CLOUDINARY_CLOUD_NAME`: Cloudinary account cloud name.
-`CLOUDINARY_API_KEY`: Cloudinary API key.
-`CLOUDINARY_API_SECRET`: Cloudinary API secret.
-`CLOUDINARY_FOLDER`: destination folder for uploads.
-`CLOUDINARY_UPLOAD_PRESET`: optional preset for direct uploads.
+- `CLOUDINARY_CLOUD_NAME`: Cloudinary account cloud name.
+- `CLOUDINARY_API_KEY`: Cloudinary API key.
+- `CLOUDINARY_API_SECRET`: Cloudinary API secret.
+- `CLOUDINARY_FOLDER`: destination folder for uploads.
+- `CLOUDINARY_UPLOAD_PRESET`: optional preset for direct uploads.
 
 ---
 
 ## API Reference
 
-Mode `proxy`:
-`POST /api/uploads`: upload multipart file through your API server.
-
-Mode `direct`:
-`POST /api/uploads/presign`: create signed upload URL/params.
-`POST /api/uploads/complete`: finalize direct upload and persist metadata.
-
-Mode `large` (S3/R2):
-`POST /api/uploads/multipart/init`: start multipart upload.
-`POST /api/uploads/multipart/complete`: complete multipart upload.
-`POST /api/uploads/multipart/abort`: abort multipart upload.
-
-All modes:
-`POST /api/uploads/access-url`: get access URL for stored key.
-`DELETE /api/uploads`: delete uploaded file and metadata.
+- Proxy mode:
+- `POST /api/uploads`: upload multipart file through your API server.
+- Direct mode:
+- `POST /api/uploads/presign`: create signed upload URL/params.
+- `POST /api/uploads/complete`: finalize direct upload and persist metadata.
+- Large mode (S3/R2):
+- `POST /api/uploads/multipart/init`: start multipart upload.
+- `POST /api/uploads/multipart/complete`: complete multipart upload.
+- `POST /api/uploads/multipart/abort`: abort multipart upload.
+- All modes:
+- `POST /api/uploads/access-url`: get access URL for stored key.
+- `DELETE /api/uploads`: delete uploaded file and metadata.
 
 ---
 
@@ -203,7 +203,7 @@ This adds `src/db/schema/uploads.ts` and stores upload records in your database.
 
 ## Example Use Cases
 
-User profile/avatar uploads with private access URLs.
-Direct browser uploads for large media-heavy applications.
-Document management APIs with MIME and file-size enforcement.
-Webhook-driven ingestion pipelines that persist upload metadata.
+- User profile/avatar uploads with private access URLs.
+- Direct browser uploads for large media-heavy applications.
+- Document management APIs with MIME and file-size enforcement.
+- Webhook-driven ingestion pipelines that persist upload metadata.

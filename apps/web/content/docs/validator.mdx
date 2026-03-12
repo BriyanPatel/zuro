@@ -2,8 +2,6 @@
 title: Validator
 description: Add request validation middleware powered by Zod
 ---
-# validator
-
 ## Overview
 
 Add production-ready request validation to your backend with a single middleware.
@@ -28,7 +26,7 @@ src/
   └ validate.ts
 ```
 
-`src/middleware/validate.ts` exports `validate(schema)`, parses incoming request payloads, rewrites `req.body/query/params` with parsed values, and returns `422` for invalid input.
+- `src/middleware/validate.ts`: exports `validate(schema)`, parses incoming payloads, rewrites `req.body/query/params`, and returns `422` for invalid input.
 
 ---
 
@@ -88,7 +86,10 @@ Example response:
 
 ## How It Works
 
-Client -> Route middleware `validate(schema)` -> Zod `parseAsync({ body, query, params })` -> valid: request continues with parsed values -> invalid: `422 VALIDATION_ERROR`
+1. Request enters route middleware `validate(schema)`.
+2. Zod runs `parseAsync({ body, query, params })`.
+3. Valid payload: parsed values are written back to `req`.
+4. Invalid payload: middleware returns `422 VALIDATION_ERROR`.
 
 ---
 
@@ -104,11 +105,11 @@ Client -> Route middleware `validate(schema)` -> Zod `parseAsync({ body, query, 
 
 ## API Reference
 
-`validate(schema)`: Express middleware factory for request validation.
-`schema.body`: validates and normalizes `req.body`.
-`schema.query`: validates and normalizes `req.query`.
-`schema.params`: validates and normalizes `req.params`.
-`422 VALIDATION_ERROR`: automatic error response with `{ path, message }[]` issues.
+- `validate(schema)`: Express middleware factory for request validation.
+- `schema.body`: validates and normalizes `req.body`.
+- `schema.query`: validates and normalizes `req.query`.
+- `schema.params`: validates and normalizes `req.params`.
+- `422 VALIDATION_ERROR`: automatic error response with `{ path, message }[]` issues.
 
 ---
 
@@ -153,7 +154,7 @@ const schema = z.object({
 
 ## Example Use Cases
 
-User signup/login payload validation.
-Webhook payload shape enforcement.
-Search/filter query validation with type coercion.
-ID/slug param validation for REST routes.
+- User signup/login payload validation.
+- Webhook payload shape enforcement.
+- Search/filter query validation with type coercion.
+- ID/slug param validation for REST routes.
