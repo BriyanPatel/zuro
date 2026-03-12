@@ -88,7 +88,7 @@ Client -> `/api/uploads/*` route -> `UploadsController` -> `lib/uploads` service
 
 ## Configuration
 
-```env
+```bash
 UPLOAD_PROVIDER=s3
 UPLOAD_MODE=direct
 UPLOAD_AUTH_MODE=required
@@ -130,7 +130,7 @@ UPLOAD_PUBLIC_BASE_URL=
 
 Cloudinary keys:
 
-```env
+```bash
 CLOUDINARY_CLOUD_NAME=...
 CLOUDINARY_API_KEY=...
 CLOUDINARY_API_SECRET=...
@@ -170,7 +170,7 @@ All modes:
 
 Private mode:
 
-```env
+```bash
 UPLOAD_AUTH_MODE=required
 UPLOAD_FILE_ACCESS=private
 ```
