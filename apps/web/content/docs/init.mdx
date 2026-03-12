@@ -1,207 +1,134 @@
 ---
 title: Init
-description: Create the core backend scaffold in 60 seconds
+description: Add the init module to scaffold a production-ready Express + TypeScript backend
 ---
-Create a new Express.js + TypeScript project with security, logging, and environment validation pre-configured.
+# init
 
-`init` scaffolds the **core foundation only**. Add features like auth and database later with `zuro-cli add`.
-It can also set up Prettier for your generated project during the interactive flow.
+## Overview
 
----
-
-## Quick Start
-
-<Tabs items={["npm", "pnpm", "bun"]}>
-  <Tab value="npm">```bash npx zuro-cli init ```</Tab>
-  <Tab value="pnpm">```bash pnpm dlx zuro-cli init ```</Tab>
-  <Tab value="bun">```bash bun x zuro-cli init ```</Tab>
-</Tabs>
+Scaffold a production-ready Express + TypeScript backend foundation in one command.
 
 ---
 
-## Interactive Setup
-
-<Steps>
-<Step>
-### Project Name
-
-```
-  Tip: Leave blank to use current folder (hackathon-project)
-
-? Project name (blank for current folder) ›
-```
-
-- **Leave blank** -> Uses current folder
-- **Enter name** -> Creates/uses that folder
-
-</Step>
-
-<Step>
-### Package Manager
-
-```
-? Package Manager? ›
-❯ npm
-  pnpm
-  bun
-```
-
-Zuro checks that your selected package manager is installed before continuing.
-
-</Step>
-
-<Step>
-### Safety Confirmation
-
-If target folder already exists and is not empty, Zuro asks before continuing.
-
-</Step>
-
-<Step>
-### Optional Prettier Setup
-
-```
-? Setup Prettier? (recommended) ›
-❯ Yes
-  No
-```
-
-If you choose **Yes**, Zuro adds:
-
-- `prettier` as a dev dependency
-- `.prettierrc` and `.prettierignore`
-- `format` and `format:check` scripts in `package.json`
-
-</Step>
-
-<Step>
-### Done
-
-Zuro automatically initializes a **Git repository** and creates the first commit.
+## Install
 
 ```bash
-cd my-project
+npx zuro add init
+```
+
+Installs and scaffolds the core backend module (for fresh projects, use `npx zuro-cli init`).
+
+---
+
+## What This Generates
+
+```text
+src/
+├ app.ts
+├ server.ts
+├ env.ts
+├ routes/
+│ └ index.ts
+└ lib/
+  └ logger.ts
+
+.env
+.gitignore
+package.json
+tsconfig.json
+zuro.json
+```
+
+`src/app.ts` sets up Express, Helmet, CORS, JSON body parsing, `/api`, and `/health`.
+`src/server.ts` starts the server and handles graceful shutdown.
+`src/env.ts` validates environment variables with Zod.
+`src/routes/index.ts` is your root API router.
+`src/lib/logger.ts` configures Pino logging.
+
+---
+
+## Quick Example
+
+```bash
+npx zuro-cli init my-api
+cd my-api
 npm run dev
 ```
 
-Server runs at `http://localhost:3000`.
+Example request:
 
-</Step>
-</Steps>
-
----
-
-## What Gets Created
-
-<Files>
-  <Folder name="my-project" defaultOpen>
-    <Folder name="src" defaultOpen>
-      <File name="app.ts" />
-      <File name="server.ts" />
-      <File name="env.ts" />
-      <Folder name="routes" defaultOpen>
-        <File name="index.ts" />
-      </Folder>
-      <Folder name="lib" defaultOpen>
-        <File name="logger.ts" />
-      </Folder>
-    </Folder>
-    <File name=".env" />
-    <File name=".gitignore" />
-    <File name="package.json" />
-    <File name="tsconfig.json" />
-    <File name="zuro.json" />
-  </Folder>
-</Files>
-
-> If you enable Prettier, `init` also creates `.prettierrc` and `.prettierignore`.
-
----
-
-## What Init Includes
-
-| Feature                   | Library        | Description                              |
-| ------------------------- | -------------- | ---------------------------------------- |
-| **Framework**             | Express.js     | Fast, minimal web framework              |
-| **Language**              | TypeScript     | Type safety out of the box               |
-| **Security**              | Helmet         | Secure HTTP headers                      |
-| **CORS**                  | cors           | Cross-origin requests                    |
-| **Logging**               | Pino           | Fast JSON logging                        |
-| **Env Validation**        | Zod            | Type-safe environment variables          |
-| **Routing**               | Express Router | Centralized `/api` route composition     |
-| **Formatting (Optional)** | Prettier       | Consistent formatting via init prompt    |
-| **Git**                   | git            | Repository initialized with first commit |
-
----
-
-## Run Your Server
-
-<Tabs items={["npm", "pnpm", "bun"]}>
-  <Tab value="npm">```bash npm run dev npm run build npm start ```</Tab>
-  <Tab value="pnpm">```bash pnpm dev pnpm build pnpm start ```</Tab>
-  <Tab value="bun">```bash bun run dev bun run build bun run start ```</Tab>
-</Tabs>
-
-Health check:
-
-```bash
-curl http://localhost:3000/health
-# {"status":"ok","timestamp":"<ISO timestamp>"}
+```http
+GET /health
 ```
 
-If you enabled Prettier:
+Example response:
 
-```bash
-npm run format
-npm run format:check
+```json
+{
+  "status": "ok",
+  "timestamp": "2026-03-12T10:00:00.000Z"
+}
 ```
 
 ---
 
-## Safety Check
+## How It Works
 
-If this directory already contains a non-Zuro project, `init` stops before writing files.
-
-Use `zuro-cli init` in:
-
-- a fresh/empty directory, or
-- an existing project already managed by Zuro CLI.
+Client -> Express App (`app.ts`) -> Middleware (`helmet`, `cors`, `json`) -> Route (`/health` or `/api/*`) -> Logger/Env (`logger.ts`, `env.ts`) -> Response
 
 ---
 
-## Troubleshooting
+## Configuration
 
-- **Registry unreachable**: Verify network and registry status, then run `npx zuro-cli init` again.
-- **Package manager not found**: Install the selected package manager, or re-run init and choose another one.
-- **Target folder not empty**: Confirm overwrite prompt, or use a new empty folder.
+```env
+PORT=3000
+NODE_ENV=development
+```
+
+`PORT`: Server port used by `server.ts`.
+`NODE_ENV`: Environment mode (`development`, `test`, `production`) used by logger and runtime behavior.
 
 ---
 
-## Next Steps
+## API Reference
 
-<div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
-  <a href="/docs/database" className="block border border-border rounded-xl p-5 bg-card hover:border-green-500/50 transition-colors no-underline">
-    <h3 className="font-bold text-foreground mb-1">-> Add Database</h3>
-    <p className="text-sm text-muted-foreground">Connect PostgreSQL or MySQL with Drizzle ORM</p>
-  </a>
+`GET /health`: Returns service health and timestamp.
+`/api/*`: Root API namespace (empty router by default, add your endpoints in `src/routes/index.ts`).
 
-  <a href="/docs/auth" className="block border border-border rounded-xl p-5 bg-card hover:border-green-500/50 transition-colors no-underline">
-    <h3 className="font-bold text-foreground mb-1">-> Add Auth</h3>
-    <p className="text-sm text-muted-foreground">User signup, login, and sessions</p>
-  </a>
+---
 
-  <a href="/docs/uploads" className="block border border-border rounded-xl p-5 bg-card hover:border-green-500/50 transition-colors no-underline">
-    <h3 className="font-bold text-foreground mb-1">-> Add Uploads</h3>
-    <p className="text-sm text-muted-foreground">Handle file uploads with S3, R2, or Cloudinary</p>
-  </a>
+## Advanced Usage
 
-  <a href="/docs/error-handler" className="block border border-border rounded-xl p-5 bg-card hover:border-green-500/50 transition-colors no-underline">
-    <h3 className="font-bold text-foreground mb-1">-> Add Error Handler</h3>
-    <p className="text-sm text-muted-foreground">Consistent API error responses</p>
-  </a>
+Optional Prettier setup during init:
 
-  <a href="/docs/validator" className="block border border-border rounded-xl p-5 bg-card hover:border-green-500/50 transition-colors no-underline md:col-span-2">
-    <h3 className="font-bold text-foreground mb-1">-> Add Validator</h3>
-    <p className="text-sm text-muted-foreground">Request validation with Zod</p>
-  </a>
-</div>
+```bash
+# prompt: Setup Prettier? -> Yes
+```
+
+This adds `prettier`, `.prettierrc`, `.prettierignore`, and scripts:
+
+```json
+{
+  "scripts": {
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  }
+}
+```
+
+Integrate additional modules:
+
+```bash
+npx zuro-cli add database
+npx zuro-cli add auth
+npx zuro-cli add uploads
+```
+
+---
+
+## Example Use Cases
+
+User authentication foundation: scaffold first, then add `auth`.
+Webhook processing service: start with `/api` routes and structured logging.
+Background jobs admin API: bootstrap quickly with health checks and env validation.
+File uploads backend: scaffold with `init`, then add `uploads` and `database`.

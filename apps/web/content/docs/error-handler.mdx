@@ -1,62 +1,69 @@
 ---
 title: Error Handler
-description: Centralized API errors with safe logging
+description: Add centralized API error handling with consistent JSON responses
 ---
+# error-handler
 
-Consistent JSON error responses, typed error classes, and async handler wrapper — all wired into `app.ts` automatically.
+## Overview
 
----
-
-## Installation
-
-<Tabs items={['npm', 'pnpm', 'bun']}>
-  <Tab value="npm">
-
-```bash
-npx zuro-cli add error-handler
-```
-
-  </Tab>
-  <Tab value="pnpm">
-
-```bash
-pnpm dlx zuro-cli add error-handler
-```
-
-  </Tab>
-  <Tab value="bun">
-
-```bash
-bun x zuro-cli add error-handler
-```
-
-  </Tab>
-</Tabs>
+Add production-ready error handling and consistent API error responses to your backend.
 
 ---
 
-## Usage
+## Install
 
-**Throw typed errors in your routes:**
+```bash
+npx zuro add error-handler
+```
+
+Adds typed error classes, async route wrapper, global error middleware, and auto-wires handlers in `app.ts`.
+
+---
+
+## What This Generates
+
+```text
+src/
+├ lib/
+│ └ errors.ts
+├ middleware/
+│ └ error-handler.ts
+└ app.ts   # updated to register notFoundHandler + errorHandler
+```
+
+`src/lib/errors.ts`: reusable typed error classes (`BadRequestError`, `NotFoundError`, etc.).
+`src/middleware/error-handler.ts`: `asyncHandler`, `notFoundHandler`, and global `errorHandler`.
+`src/app.ts`: registers `app.use(notFoundHandler)` and `app.use(errorHandler)` as last middleware.
+
+---
+
+## Quick Example
 
 ```ts
-import { NotFoundError, ForbiddenError } from "../lib/errors";
+import { Router } from "express";
+import { NotFoundError } from "../lib/errors";
 import { asyncHandler } from "../middleware/error-handler";
 
-router.get(
-  "/users/:id",
-  asyncHandler(async (req, res) => {
-    const user = await db.findUser(req.params.id);
+const router = Router();
 
-    if (!user) throw new NotFoundError("User not found");
-    if (!user.isActive) throw new ForbiddenError("Account is deactivated");
+router.get("/users/:id", asyncHandler(async (req, res) => {
+  const user = null;
 
-    res.json(user);
-  }),
-);
+  if (!user) {
+    throw new NotFoundError("User not found");
+  }
+
+  res.json({ user });
+}));
 ```
 
-The response is always consistent JSON:
+Example request:
+
+```http
+GET /api/users/123
+```
+
+Example response:
 
 ```json
 {
@@ -66,46 +73,75 @@ The response is always consistent JSON:
 }
 ```
 
-**Available error classes:**
+---
 
-| Class                 | Status | Code               |
-| --------------------- | ------ | ------------------ |
-| `BadRequestError`     | 400    | `BAD_REQUEST`      |
-| `UnauthorizedError`   | 401    | `UNAUTHORIZED`     |
-| `ForbiddenError`      | 403    | `FORBIDDEN`        |
-| `NotFoundError`       | 404    | `NOT_FOUND`        |
-| `ConflictError`       | 409    | `CONFLICT`         |
-| `ValidationError`     | 422    | `VALIDATION_ERROR` |
-| `InternalServerError` | 500    | `INTERNAL_ERROR`   |
+## How It Works
 
-**Create your own error class:**
-
-```ts
-import { AppError } from "../lib/errors";
-
-export class PaymentError extends AppError {
-  constructor(message = "Payment failed") {
-    super(message, 402, "PAYMENT_FAILED");
-  }
-}
-```
+Client -> Route (`asyncHandler`) -> throw `AppError`/`ZodError` -> global `errorHandler` -> standardized JSON response (`status`, `code`, `message`, optional `errors`/`requestId`)
 
 ---
 
 ## Configuration
 
-No environment variables needed. Behavior adapts to `NODE_ENV` automatically:
+```env
+# Required: none
+# Optional (from core):
+NODE_ENV=development
+```
 
-- **development** — stack traces included in responses
-- **production** — stack traces hidden, generic error messages for unexpected errors
-- **Sensitive fields** (`password`, `token`, `secret`) are redacted from error logs
-- **Request IDs** from `x-request-id` headers are included in responses
+`NODE_ENV`: includes stack traces in development and hides them in production.
 
 ---
 
-## Troubleshooting
+## API Reference
 
-- **Errors not being caught** — make sure `app.use(errorHandler)` is the last middleware in `app.ts`
-- **Stack trace in production** — verify `NODE_ENV=production` in `.env`
-- **Zod errors not formatted** — `ZodError` is automatically formatted as `VALIDATION_ERROR` with `422`
+`asyncHandler(fn)`: wraps async route handlers and forwards rejected promises to `next()`.
+`errorHandler(err, req, res, next)`: global JSON error formatter (`422` for `ZodError`, typed status/code for `AppError`, `500` fallback).
+`notFoundHandler(req, res)`: catches unmatched routes and returns `404 NOT_FOUND`.
+`AppError`: base class for custom operational errors.
+`BadRequestError`, `UnauthorizedError`, `ForbiddenError`, `NotFoundError`, `ConflictError`, `ValidationError`, `InternalServerError`: ready-to-use typed errors.
 
+---
+
+## Advanced Usage
+
+Custom domain error:
+
+```ts
+import { AppError } from "../lib/errors";
+
+export class PaymentRequiredError extends AppError {
+  constructor(message = "Payment required") {
+    super(message, 402, "PAYMENT_REQUIRED");
+  }
+}
+```
+
+Use request IDs in responses/log correlation:
+
+```http
+GET /api/users/123
+x-request-id: req_abc123
+```
+
+If present, `requestId` is included in error responses.
+
+Zod integration (automatic `422`):
+
+```json
+{
+  "status": "error",
+  "code": "VALIDATION_ERROR",
+  "message": "Validation failed",
+  "errors": [{ "path": "body.email", "message": "Invalid email" }]
+}
+```
+
+---
+
+## Example Use Cases
+
+Normalize error payloads across all API endpoints.
+Protect async routes from unhandled promise rejections.
+Map business/domain errors to explicit HTTP status codes.
+Correlate logs and client errors with request IDs.

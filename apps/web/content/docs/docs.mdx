@@ -1,50 +1,105 @@
 ---
 title: API Docs
-description: Add Scalar API docs with OpenAPI generated from Zod
+description: Add OpenAPI + Scalar API documentation to your backend
 ---
+# docs
 
-Interactive API docs with [Scalar](https://scalar.com) and OpenAPI generation from your Zod schemas.
+## Overview
 
----
-
-## Installation
-
-<Tabs items={['npm', 'pnpm', 'bun']}>
-  <Tab value="npm">
-
-```bash
-npx zuro-cli add docs
-```
-
-  </Tab>
-  <Tab value="pnpm">
-
-```bash
-pnpm dlx zuro-cli add docs
-```
-
-  </Tab>
-  <Tab value="bun">
-
-```bash
-bun x zuro-cli add docs
-```
-
-  </Tab>
-</Tabs>
+Add production-ready OpenAPI generation and interactive API docs to your backend.
 
 ---
 
-## Usage
+## Install
 
-After install, visit:
+```bash
+npx zuro add docs
+```
 
-- **Scalar UI:** `http://localhost:3000/api/docs`
-- **OpenAPI JSON:** `http://localhost:3000/api/docs/openapi.json`
+Scaffolds OpenAPI + Scalar routes and mounts API docs under `/api/docs`.
 
-**Document your own routes** in `src/lib/openapi.ts`:
+---
 
-```ts title="src/lib/openapi.ts"
+## What This Generates
+
+```text
+src/
+├ lib/
+│ └ openapi.ts
+├ routes/
+│ └ docs.routes.ts
+└ routes/index.ts   # updated to mount /docs
+```
+
+`src/lib/openapi.ts`: OpenAPI registry + document generator.
+`src/routes/docs.routes.ts`: serves JSON spec and Scalar UI.
+`src/routes/index.ts`: mounts docs routes at `/api/docs`.
+
+---
+
+## Quick Example
+
+```bash
+npx zuro add docs
+npm run dev
+```
+
+Example request:
+
+```http
+GET /api/docs/openapi.json
+```
+
+Example response:
+
+```json
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Zuro API",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/health": {
+      "get": {}
+    }
+  }
+}
+```
+
+Open interactive docs at `http://localhost:3000/api/docs`.
+
+---
+
+## How It Works
+
+Client -> `/api/docs` route -> Scalar UI -> fetches `/api/docs/openapi.json` -> `createOpenApiDocument()` builds spec from Zod/OpenAPI registry -> response
+
+---
+
+## Configuration
+
+```env
+# No required environment variables
+```
+
+`docs` is code-configured in `src/lib/openapi.ts`.
+
+---
+
+## API Reference
+
+`GET /api/docs`: interactive Scalar docs UI.
+`GET /api/docs/openapi.json`: generated OpenAPI spec.
+`createOpenApiDocument()`: exports the OpenAPI document builder.
+
+---
+
+## Advanced Usage
+
+Register custom endpoints in `src/lib/openapi.ts`:
+
+```ts
 import { z } from "zod";
 
 const createPostSchema = z.object({
@@ -59,7 +114,9 @@ registry.registerPath({
   request: {
     body: {
       content: {
-        "application/json": { schema: createPostSchema },
+        "application/json": {
+          schema: createPostSchema,
+        },
       },
     },
   },
@@ -69,19 +126,21 @@ registry.registerPath({
 });
 ```
 
-Refresh `/api/docs` and your new endpoint appears with full schema details.
+Integrate module docs automatically:
+
+```bash
+npx zuro add docs
+npx zuro add auth
+npx zuro add uploads
+```
+
+When installed together, auth/uploads endpoints are injected into `openapi.ts`.
 
 ---
 
-## Configuration
+## Example Use Cases
 
-No environment variables needed. Auth endpoints are added to OpenAPI automatically when both `auth` and `docs` modules are installed.
-
----
-
-## Troubleshooting
-
-- **Docs page blank** — make sure `docs.routes.ts` is imported in your router
-- **Endpoint not showing** — verify it's registered in `src/lib/openapi.ts` and restart the server
-- **Auth endpoints missing** — run `add auth` after `add docs` (or vice versa) to sync them
-
+Internal API reference for backend teams.
+Client SDK generation from OpenAPI JSON.
+QA/UAT testing with interactive endpoint docs.
+Publishing auth and upload workflows in one API portal.

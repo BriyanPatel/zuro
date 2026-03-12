@@ -1,114 +1,159 @@
 ---
 title: Validator
-description: Simple request validation with Zod
+description: Add request validation middleware powered by Zod
 ---
+# validator
 
-Validate incoming requests with Zod schemas. Invalid requests get a `422` response automatically.
+## Overview
 
----
-
-## Installation
-
-<Tabs items={['npm', 'pnpm', 'bun']}>
-  <Tab value="npm">
-
-```bash
-npx zuro-cli add validator
-```
-
-  </Tab>
-  <Tab value="pnpm">
-
-```bash
-pnpm dlx zuro-cli add validator
-```
-
-  </Tab>
-  <Tab value="bun">
-
-```bash
-bun x zuro-cli add validator
-```
-
-  </Tab>
-</Tabs>
+Add production-ready request validation to your backend with a single middleware.
 
 ---
 
-## Usage
+## Install
 
-Add `validate(schema)` as middleware to any route. Your schema describes what the request should look like.
+```bash
+npx zuro add validator
+```
 
-**Validate a POST body:**
+Adds `validate()` middleware so routes can validate `body`, `query`, and `params` with Zod.
+
+---
+
+## What This Generates
+
+```text
+src/
+└ middleware/
+  └ validate.ts
+```
+
+`src/middleware/validate.ts` exports `validate(schema)`, parses incoming request payloads, rewrites `req.body/query/params` with parsed values, and returns `422` for invalid input.
+
+---
+
+## Quick Example
 
 ```ts
+import { Router } from "express";
 import { z } from "zod";
 import { validate } from "../middleware/validate";
 
-const schema = z.object({
+const router = Router();
+
+const createUserSchema = z.object({
   body: z.object({
-    name: z.string(),
+    name: z.string().min(1),
     email: z.string().email(),
   }),
 });
 
-router.post("/users", validate(schema), (req, res) => {
-  // req.body is validated — safe to use
-  res.json({ name: req.body.name });
+router.post("/users", validate(createUserSchema), async (req, res) => {
+  res.status(201).json({
+    success: true,
+    user: req.body,
+  });
 });
 ```
 
-**Validate URL params:**
+Example request:
 
-```ts
-const schema = z.object({
-  params: z.object({
-    id: z.string().uuid(),
-  }),
-});
+```http
+POST /users
+Content-Type: application/json
 
-router.get("/users/:id", validate(schema), (req, res) => {
-  res.json({ userId: req.params.id });
-});
+{
+  "name": "Ava",
+  "email": "not-an-email"
+}
 ```
 
-**Validate query strings:**
-
-```ts
-const schema = z.object({
-  query: z.object({
-    page: z.coerce.number().default(1),
-    limit: z.coerce.number().default(20),
-  }),
-});
-
-router.get("/posts", validate(schema), (req, res) => {
-  // page and limit are numbers, not strings
-  res.json({ page: req.query.page, limit: req.query.limit });
-});
-```
-
-**What happens on invalid input:**
+Example response:
 
 ```json
 {
   "status": "error",
   "code": "VALIDATION_ERROR",
   "message": "Validation failed",
-  "errors": [{ "path": "body.email", "message": "Invalid email" }]
+  "errors": [
+    {
+      "path": "body.email",
+      "message": "Invalid email"
+    }
+  ]
 }
 ```
 
 ---
 
-## Configuration
+## How It Works
 
-No environment variables needed. Zod defaults and coercion work automatically — for example, `z.coerce.number()` converts the string `"5"` from a query param to the number `5`.
+Client -> Route middleware `validate(schema)` -> Zod `parseAsync({ body, query, params })` -> valid: request continues with parsed values -> invalid: `422 VALIDATION_ERROR`
 
 ---
 
-## Troubleshooting
+## Configuration
 
-- **422 Validation failed** — check that your request matches the schema fields and types
-- **Query params are strings** — use `z.coerce.number()` or `z.coerce.boolean()` to convert them
-- **Non-Zod errors** — they pass through to your error handler middleware
+```env
+# No required environment variables
+```
+
+`validator` is fully code-configured through your Zod schemas.
+
+---
+
+## API Reference
+
+`validate(schema)`: Express middleware factory for request validation.
+`schema.body`: validates and normalizes `req.body`.
+`schema.query`: validates and normalizes `req.query`.
+`schema.params`: validates and normalizes `req.params`.
+`422 VALIDATION_ERROR`: automatic error response with `{ path, message }[]` issues.
+
+---
+
+## Advanced Usage
+
+Validate query + params with coercion:
+
+```ts
+const listSchema = z.object({
+  params: z.object({
+    projectId: z.string().uuid(),
+  }),
+  query: z.object({
+    page: z.coerce.number().int().positive().default(1),
+    limit: z.coerce.number().int().positive().max(100).default(20),
+  }),
+});
+
+router.get("/projects/:projectId/issues", validate(listSchema), (req, res) => {
+  res.json({
+    projectId: req.params.projectId,
+    page: req.query.page,
+    limit: req.query.limit,
+  });
+});
+```
+
+Reuse shared schema blocks:
+
+```ts
+const pagination = z.object({
+  page: z.coerce.number().int().positive().default(1),
+  limit: z.coerce.number().int().positive().default(20),
+});
+
+const schema = z.object({
+  query: pagination,
+});
+```
+
+---
+
+## Example Use Cases
+
+User signup/login payload validation.
+Webhook payload shape enforcement.
+Search/filter query validation with type coercion.
+ID/slug param validation for REST routes.

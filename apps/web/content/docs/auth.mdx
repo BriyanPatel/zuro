@@ -1,127 +1,158 @@
 ---
 title: Auth
-description: Add user auth in one command
+description: Add production-ready authentication with Better Auth
+---
+# auth
+
+## Overview
+
+Add production-ready email/password authentication and session-based user access to your backend.
+
 ---
 
-Email/password auth with [Better Auth](https://www.better-auth.com), session support, and a protected `/api/users/me` endpoint.
+## Install
+
+```bash
+npx zuro add auth
+```
+
+Installs Better Auth, scaffolds auth files/routes, and auto-installs required module dependencies (`database`, `error-handler`) if missing.
 
 ---
 
-## Installation
+## What This Generates
 
-<Tabs items={['npm', 'pnpm', 'bun']}>
-  <Tab value="npm">
+```text
+src/
+├ lib/
+│ └ auth.ts
+├ controllers/
+│ └ user.controller.ts
+├ routes/
+│ └ user.routes.ts
+└ db/schema/
+  └ auth.ts       # mysql projects receive mysql-compatible auth schema
 
-```bash
-npx zuro-cli add auth
+src/app.ts         # updated: mounts /api/auth handler
+src/routes/index.ts # updated: mounts /users routes
 ```
 
-  </Tab>
-  <Tab value="pnpm">
+`lib/auth.ts`: Better Auth setup (`basePath: /api/auth`) with Drizzle adapter.
+`controllers/user.controller.ts`: authenticated profile handler (`/api/users/me`).
+`routes/user.routes.ts`: user routes wired with async error handling.
+`db/schema/auth.ts`: auth tables (`user`, `session`, `account`, `verification`).
+`app.ts` and `routes/index.ts`: route mounts injected automatically.
+
+---
+
+## Quick Example
 
 ```bash
-pnpm dlx zuro-cli add auth
+curl -X POST http://localhost:3000/api/auth/sign-up/email \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Ava",
+    "email": "ava@example.com",
+    "password": "password123"
+  }'
 ```
 
-  </Tab>
-  <Tab value="bun">
+Example request:
 
-```bash
-bun x zuro-cli add auth
+```http
+GET /api/users/me
+Cookie: <better-auth-session-cookie>
 ```
 
-  </Tab>
-</Tabs>
+Example response:
 
-Auto-installs `database` and `error-handler` if missing. After install, run migrations:
+```json
+{
+  "user": {
+    "id": "user_123",
+    "email": "ava@example.com",
+    "name": "Ava"
+  }
+}
+```
+
+---
+
+## How It Works
+
+Client -> `/api/auth/*` (Better Auth handler) -> session/cookie issued -> `/api/users/me` -> `auth.api.getSession(...)` -> database-backed session lookup -> response
+
+---
+
+## Configuration
+
+```env
+BETTER_AUTH_SECRET=your-secret-key-at-least-32-characters-long
+BETTER_AUTH_URL=http://localhost:3000
+DATABASE_URL=postgresql://postgres@localhost:5432/mydb
+```
+
+`BETTER_AUTH_SECRET`: signing/encryption secret for auth sessions and tokens.
+`BETTER_AUTH_URL`: backend base URL used by Better Auth.
+`DATABASE_URL`: Drizzle database connection for auth tables and sessions.
+
+---
+
+## API Reference
+
+`POST /api/auth/sign-up/email`: register user with email/password.
+`POST /api/auth/sign-in/email`: authenticate user and create session.
+`POST /api/auth/sign-out`: invalidate current session.
+`GET /api/auth/get-session`: read current session from cookie.
+`GET /api/users/me`: return authenticated user profile from active session.
+
+---
+
+## Advanced Usage
+
+Protect custom routes with Better Auth session checks:
+
+```ts
+import { Router } from "express";
+import { fromNodeHeaders } from "better-auth/node";
+import { auth } from "../lib/auth";
+import { UnauthorizedError } from "../lib/errors";
+import { asyncHandler } from "../middleware/error-handler";
+
+const router = Router();
+
+router.get("/dashboard", asyncHandler(async (req, res) => {
+  const session = await auth.api.getSession({
+    headers: fromNodeHeaders(req.headers),
+  });
+
+  if (!session) {
+    throw new UnauthorizedError("Not authenticated");
+  }
+
+  res.json({ message: `Welcome, ${session.user.name}` });
+}));
+```
+
+Run migrations after install:
 
 ```bash
 npx drizzle-kit generate
 npx drizzle-kit migrate
 ```
 
----
-
-## Usage
-
-**Sign up a user:**
+Optional docs integration:
 
 ```bash
-curl -X POST http://localhost:3000/api/auth/sign-up/email \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "Briyan",
-    "email": "briyan@example.com",
-    "password": "password123"
-  }'
-```
-
-**Log in:**
-
-```bash
-curl -X POST http://localhost:3000/api/auth/sign-in/email \
-  -H "Content-Type: application/json" \
-  -d '{
-    "email": "briyan@example.com",
-    "password": "password123"
-  }'
-```
-
-**Get current user's profile:**
-
-```bash
-curl http://localhost:3000/api/users/me \
-  -H "Cookie: <session_cookie_from_login>"
-```
-
-**Available endpoints:**
-
-| Path                      | Method | What it does    |
-| ------------------------- | ------ | --------------- |
-| `/api/auth/sign-up/email` | POST   | Register        |
-| `/api/auth/sign-in/email` | POST   | Login           |
-| `/api/auth/sign-out`      | POST   | Logout          |
-| `/api/auth/get-session`   | GET    | Current session |
-| `/api/users/me`           | GET    | User profile    |
-
-**Protect your own routes:**
-
-```ts
-import { auth } from "../lib/auth";
-import { fromNodeHeaders } from "better-auth/node";
-import { UnauthorizedError } from "../lib/errors";
-import { asyncHandler } from "../middleware/error-handler";
-
-router.get(
-  "/dashboard",
-  asyncHandler(async (req, res) => {
-    const session = await auth.api.getSession({
-      headers: fromNodeHeaders(req.headers),
-    });
-
-    if (!session) throw new UnauthorizedError("Not authenticated");
-
-    res.json({ message: `Welcome, ${session.user.name}!` });
-  }),
-);
+# During auth install prompt:
+# Install API docs module (Scalar + OpenAPI) too? -> Yes
 ```
 
 ---
 
-## Configuration
+## Example Use Cases
 
-Two env vars are added automatically:
-
-```bash
-BETTER_AUTH_SECRET=<auto-generated-64-char-hex>
-BETTER_AUTH_URL=http://localhost:3000
-```
-
----
-
-## Troubleshooting
-
-- **Migration errors** — check `DATABASE_URL` is correct and the database is running
-- **401 on `/api/users/me`** — include the session cookie from the login response
-- **`BETTER_AUTH_URL` issues** — must match your backend origin exactly
-
+User signup/login flows for web or mobile backends.
+Session-based dashboard/profile APIs.
+Protecting private routes with server-side session checks.
+Multi-module apps that combine `auth` with `uploads` and `database`.

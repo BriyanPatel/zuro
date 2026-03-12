@@ -1,6 +1,6 @@
 {
     "name": "zuro-cli",
-    "version": "0.0.2-beta.15",
+    "version": "0.0.2-beta.16",
     "description": "Production-ready backend modules you own. No framework lock-in.",
     "bin": {
         "zuro-cli": "./dist/index.js"

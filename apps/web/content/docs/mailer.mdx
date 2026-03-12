@@ -1,45 +1,43 @@
 ---
 title: Mailer
-description: Send emails from your Zuro app using SMTP or Resend
+description: Add production-ready email sending with SMTP or Resend
 ---
+# mailer
 
-Send emails with a single `sendMail()` function. Supports SMTP (Nodemailer) and Resend.
+## Overview
 
----
-
-## Installation
-
-<Tabs items={['npm', 'pnpm', 'bun']}>
-  <Tab value="npm">
-
-```bash
-npx zuro-cli add mailer
-```
-
-  </Tab>
-  <Tab value="pnpm">
-
-```bash
-pnpm dlx zuro-cli add mailer
-```
-
-  </Tab>
-  <Tab value="bun">
-
-```bash
-bun x zuro-cli add mailer
-```
-
-  </Tab>
-</Tabs>
-
-You'll be prompted to choose **SMTP** or **Resend**, then enter your credentials.
+Add production-ready transactional email sending to your backend.
 
 ---
 
-## Usage
+## Install
 
-**Send an email:**
+```bash
+npx zuro add mailer
+```
+
+Scaffolds a `sendMail()` utility, mail templates, and env config for either SMTP (Nodemailer) or Resend.
+
+---
+
+## What This Generates
+
+```text
+src/
+└ lib/
+  ├ mailer.ts                 # or mailer.resend.ts based on provider
+  └ mail-templates/
+    ├ index.ts
+    └ welcome.ts
+```
+
+`lib/mailer.ts`: email sender implementation (`nodemailer` for SMTP, `resend` for Resend).
+`lib/mail-templates/index.ts`: template registry used by `sendMail({ template })`.
+`lib/mail-templates/welcome.ts`: starter HTML template.
+
+---
+
+## Quick Example
 
 ```ts
 import { sendMail } from "../lib/mailer";
@@ -47,83 +45,124 @@ import { sendMail } from "../lib/mailer";
 await sendMail({
   to: "user@example.com",
   subject: "Welcome!",
-  html: "<h1>Welcome to our app</h1>",
+  template: "welcome",
+  data: { name: "Ava" },
 });
 ```
 
-**Send with a template:**
+Example request:
 
 ```ts
 await sendMail({
   to: "user@example.com",
-  subject: "Welcome!",
-  template: "welcome",
-  data: { name: "Briyan" },
+  subject: "Status",
+  html: "<p>Your job finished.</p>",
 });
 ```
 
-**Send to multiple recipients:**
+Example response:
 
-```ts
-await sendMail({
-  to: ["alice@example.com", "bob@example.com"],
-  subject: "Announcement",
-  html: "<p>Big news!</p>",
-});
+```json
+{
+  "success": true
+}
 ```
 
-**Create a custom template:**
+---
 
-```ts title="src/lib/mail-templates/reset-password.ts"
-export const resetPassword = (data: Record<string, unknown>) => {
-  const link = typeof data.link === "string" ? data.link : "#";
-  return `
-    <h1>Reset Your Password</h1>
-    <a href="${link}">Reset Password</a>
-  `;
-};
-```
+## How It Works
 
-Register it in `src/lib/mail-templates/index.ts`:
-
-```ts
-import { welcome } from "./welcome";
-import { resetPassword } from "./reset-password";
-
-export const templates = { welcome, "reset-password": resetPassword };
-```
+Service/Route -> `sendMail(options)` -> resolve template or raw html/text -> provider client (SMTP or Resend) -> provider API -> send result
 
 ---
 
 ## Configuration
 
-### SMTP
+SMTP:
 
-```bash
-SMTP_HOST=smtp.gmail.com
+```env
+SMTP_HOST=smtp.example.com
 SMTP_PORT=587
-SMTP_USER=your-email@gmail.com
-SMTP_PASS=your-app-password
-MAIL_FROM=noreply@yourapp.com
+SMTP_USER=your-email@example.com
+SMTP_PASS=your-password
+MAIL_FROM=noreply@example.com
 ```
 
-### Resend
+Resend:
 
-```bash
+```env
 RESEND_API_KEY=re_your_api_key
 MAIL_FROM=onboarding@resend.dev
 ```
 
-<Callout type="info">
-  For Gmail, enable "App Passwords" in your Google Account settings. Regular
-  passwords won't work.
-</Callout>
+`SMTP_HOST`: SMTP server hostname.
+`SMTP_PORT`: SMTP server port (`465` for secure SSL, `587` for STARTTLS).
+`SMTP_USER`: SMTP username/login.
+`SMTP_PASS`: SMTP password/app password.
+`RESEND_API_KEY`: Resend API token.
+`MAIL_FROM`: default sender address for all emails.
 
 ---
 
-## Troubleshooting
+## API Reference
 
-- **`Email template 'x' not found`** — make sure it's exported in `src/lib/mail-templates/index.ts`
-- **SMTP connection refused** — check `SMTP_HOST` and `SMTP_PORT` in `.env`
-- **Placeholder values** — update dummy values in `.env` before sending real emails
+`sendMail({ to, subject, html?, text?, template?, data? })`: sends an email.
+`to`: single email or list of emails.
+`subject`: message subject.
+`html` / `text`: raw content payload.
+`template` + `data`: render a registered template from `lib/mail-templates/index.ts`.
 
+Errors:
+`NotFoundError`: template key not found.
+`BadRequestError`: neither `html`, `text`, nor `template` provided.
+
+---
+
+## Advanced Usage
+
+Multiple recipients:
+
+```ts
+await sendMail({
+  to: ["alice@example.com", "bob@example.com"],
+  subject: "System notice",
+  text: "Maintenance at 02:00 UTC",
+});
+```
+
+Custom template:
+
+```ts
+// src/lib/mail-templates/reset-password.ts
+export const resetPassword = (data: Record<string, unknown>) => {
+  const link = typeof data.link === "string" ? data.link : "#";
+  return `<a href="${link}">Reset password</a>`;
+};
+```
+
+```ts
+// src/lib/mail-templates/index.ts
+import { welcome } from "./welcome";
+import { resetPassword } from "./reset-password";
+
+export const templates = {
+  welcome,
+  "reset-password": resetPassword,
+};
+```
+
+Provider switch:
+
+```bash
+# Re-run and choose a different provider in prompt
+npx zuro add mailer
+```
+
+---
+
+## Example Use Cases
+
+User onboarding and welcome emails.
+Password reset and verification links.
+Job/queue completion notifications.
+Admin alerts and operational status emails.
