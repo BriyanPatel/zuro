@@ -149,3 +149,115 @@ Zod integration (automatic `422`):
 - Protect async routes from unhandled promise rejections.
 - Map business/domain errors to explicit HTTP status codes.
 - Correlate logs and client errors with request IDs.
+
+---
+
+## All Error Classes
+
+| Class | HTTP Status | Code |
+|-------|------------|------|
+| `BadRequestError` | 400 | `BAD_REQUEST` |
+| `UnauthorizedError` | 401 | `UNAUTHORIZED` |
+| `ForbiddenError` | 403 | `FORBIDDEN` |
+| `NotFoundError` | 404 | `NOT_FOUND` |
+| `ConflictError` | 409 | `CONFLICT` |
+| `ValidationError` | 422 | `VALIDATION_ERROR` |
+| `InternalServerError` | 500 | `INTERNAL_SERVER_ERROR` |
+
+All extend `AppError`. Throw any of them from a route and `errorHandler` returns the correct status automatically.
+
+---
+
+## Integration with Validator
+
+When you use the `validator` module alongside `error-handler`, Zod validation failures are automatically caught and formatted:
+
+```ts
+router.post("/users", validate(createUserSchema), asyncHandler(async (req, res) => {
+  // If validation fails, errorHandler returns 422 automatically
+  res.status(201).json({ user: req.body });
+}));
+```
+
+The response on a bad request:
+
+```json
+{
+  "status": "error",
+  "code": "VALIDATION_ERROR",
+  "message": "Validation failed",
+  "errors": [
+    { "path": "body.email", "message": "Invalid email" }
+  ]
+}
+```
+
+---
+
+## Error Response Shape
+
+Every error from `errorHandler` follows this consistent shape:
+
+```ts
+{
+  status: "error",
+  code: string,         // e.g. "NOT_FOUND", "UNAUTHORIZED"
+  message: string,      // human-readable message
+  errors?: Array<{      // only on validation errors
+    path: string,
+    message: string
+  }>,
+  requestId?: string    // included when x-request-id header is present
+}
+```
+
+This consistency means your frontend only needs one error handler:
+
+```ts
+async function apiFetch(url: string) {
+  const res = await fetch(url);
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(`${err.code}: ${err.message}`);
+  }
+  return res.json();
+}
+```
+
+---
+
+## Troubleshooting
+
+**Async errors not being caught**
+Without `asyncHandler`, rejected promises bypass Express error handling in Express 4:
+
+```ts
+// ❌ Unhandled rejection in Express 4
+router.get("/data", async (req, res) => {
+  throw new Error("oops"); // crashes the process
+});
+
+// ✅ Correct
+router.get("/data", asyncHandler(async (req, res) => {
+  throw new Error("oops"); // forwarded to errorHandler
+}));
+```
+
+Note: Express 5 (when stable) handles async errors natively. `asyncHandler` is still safe to use with Express 5.
+
+**Stack traces appearing in production responses**
+Set `NODE_ENV=production` in your `.env`. The error handler hides stack traces automatically when not in development mode.
+
+**Custom errors not returning expected status code**
+Ensure your custom error extends `AppError` and passes the correct HTTP status as the second argument:
+
+```ts
+export class PaymentRequiredError extends AppError {
+  constructor(message = "Payment required") {
+    super(message, 402, "PAYMENT_REQUIRED"); // status is 2nd arg
+  }
+}
+```
+
+**404 handler not triggering**
+The `notFoundHandler` must be registered **after** all routes in `app.ts`. Zuro does this automatically — if you've added routes manually, ensure they're mounted before `app.use(notFoundHandler)`.

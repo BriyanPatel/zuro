@@ -132,3 +132,114 @@ Use this when running behind a reverse proxy/load balancer.
 - Limit login attempts to reduce brute-force attacks.
 - Control expensive endpoints (search, reports, exports).
 - Enforce fair usage for multi-tenant backend APIs.
+
+---
+
+## Per-Route Limiters
+
+The global `rateLimiter` from `app.ts` covers all routes. For sensitive endpoints, add a stricter limiter directly on the route:
+
+**Auth endpoints (10 attempts per 15 minutes):**
+
+```ts
+import rateLimit from "express-rate-limit";
+import { asyncHandler } from "../middleware/error-handler";
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  message: {
+    status: "error",
+    code: "RATE_LIMIT_EXCEEDED",
+    message: "Too many attempts, please try again in 15 minutes.",
+  },
+});
+
+router.post("/auth/sign-in/email", authLimiter, asyncHandler(signInController));
+router.post("/auth/sign-up/email", authLimiter, asyncHandler(signUpController));
+```
+
+**Search / expensive endpoints (30 per minute):**
+
+```ts
+const searchLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 30,
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+});
+
+router.get("/search", searchLimiter, asyncHandler(searchController));
+```
+
+---
+
+## Rate Limit Headers
+
+By default the generated middleware uses `standardHeaders: "draft-7"`, which sends these headers with every response:
+
+| Header | Description |
+|--------|-------------|
+| `RateLimit-Limit` | Max requests in the window |
+| `RateLimit-Remaining` | Requests left in current window |
+| `RateLimit-Reset` | When the window resets (Unix timestamp) |
+
+Your frontend can read these to show a countdown or disable UI:
+
+```ts
+const remaining = res.headers.get("ratelimit-remaining");
+if (remaining === "0") {
+  showRateLimitWarning();
+}
+```
+
+---
+
+## Running Behind a Proxy
+
+If your server runs behind Nginx, a load balancer, or a cloud proxy (Railway, Render, Fly.io), add the trust proxy setting to `app.ts` so rate limiting uses the real client IP rather than the proxy IP:
+
+```ts
+// src/app.ts
+app.set("trust proxy", 1); // trust first proxy
+```
+
+Without this, all requests will appear to come from the same IP (the proxy), and the entire server will be rate-limited together.
+
+---
+
+## Troubleshooting
+
+**All requests hit the limit immediately**
+You're likely behind a proxy and the limiter sees all traffic as one IP. Add `app.set("trust proxy", 1)` as described above.
+
+**`429` responses not matching your error format**
+The default `message` option in `express-rate-limit` sends a plain string. The generated middleware already overrides this with the standard `{ status, code, message }` shape. If you created a custom limiter, ensure you pass a matching `message` object.
+
+**Limit not resetting as expected**
+`RATE_LIMIT_WINDOW_MS` is in milliseconds. Common values:
+- 15 minutes: `900000`
+- 1 hour: `3600000`
+- 1 day: `86400000`
+
+**Limits not persisting across server restarts**
+The default in-memory store resets on restart. For production with multiple replicas, use a Redis store:
+
+```bash
+npm install rate-limit-redis ioredis
+```
+
+```ts
+import RedisStore from "rate-limit-redis";
+import Redis from "ioredis";
+
+const redis = new Redis(process.env.REDIS_URL);
+
+const rateLimiter = rateLimit({
+  windowMs: Number(env.RATE_LIMIT_WINDOW_MS),
+  max: Number(env.RATE_LIMIT_MAX),
+  store: new RedisStore({ sendCommand: (...args) => redis.call(...args) }),
+});
+```

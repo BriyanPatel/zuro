@@ -170,3 +170,115 @@ npx zuro add mailer
 - Password reset and verification links.
 - Job/queue completion notifications.
 - Admin alerts and operational status emails.
+
+---
+
+## Building Templates
+
+Templates are plain functions that return an HTML string. Keep templates in `src/lib/mail-templates/` and register them in `index.ts`.
+
+**Password reset template:**
+
+```ts
+// src/lib/mail-templates/reset-password.ts
+export const resetPassword = (data: Record<string, unknown>) => {
+  const link = typeof data.link === "string" ? data.link : "#";
+  const name = typeof data.name === "string" ? data.name : "there";
+  return `
+    <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+      <h2>Reset your password</h2>
+      <p>Hi ${name},</p>
+      <p>Click the button below to reset your password. This link expires in 1 hour.</p>
+      <a href="${link}" style="
+        display: inline-block;
+        background: #10b981;
+        color: white;
+        padding: 12px 24px;
+        border-radius: 6px;
+        text-decoration: none;
+      ">Reset password</a>
+      <p style="color: #6b7280; font-size: 14px;">If you didn't request this, ignore this email.</p>
+    </div>
+  `;
+};
+```
+
+Register it:
+
+```ts
+// src/lib/mail-templates/index.ts
+import { welcome } from "./welcome";
+import { resetPassword } from "./reset-password";
+
+export const templates = {
+  welcome,
+  "reset-password": resetPassword,
+};
+```
+
+Send it from a route:
+
+```ts
+await sendMail({
+  to: user.email,
+  subject: "Reset your Zuro password",
+  template: "reset-password",
+  data: { name: user.name, link: `https://yourapp.com/reset?token=${token}` },
+});
+```
+
+---
+
+## Using with Auth Module
+
+The most common pattern is sending emails from auth-related routes.
+
+**Send welcome email on signup:**
+
+```ts
+// src/controllers/user.controller.ts
+import { sendMail } from "../lib/mailer";
+
+export const onUserCreated = async (user: { email: string; name: string }) => {
+  await sendMail({
+    to: user.email,
+    subject: "Welcome to the app",
+    template: "welcome",
+    data: { name: user.name },
+  });
+};
+```
+
+---
+
+## Troubleshooting
+
+**`SMTP connection refused` / `ECONNREFUSED`**
+Your `SMTP_HOST` is unreachable. Common causes:
+- Wrong hostname or port in `.env`
+- Firewall blocking outbound SMTP (common on cloud VMs — use port 587 or a relay service like Resend)
+- Local dev: use [Mailpit](https://github.com/axllent/mailpit) or Mailtrap as a local SMTP sink:
+  ```bash
+  SMTP_HOST=localhost
+  SMTP_PORT=1025
+  SMTP_USER=
+  SMTP_PASS=
+  ```
+
+**`Invalid login` with Gmail SMTP**
+Gmail requires an App Password when 2FA is enabled:
+1. Go to Google Account → Security → App passwords
+2. Generate a password for "Mail"
+3. Use that as `SMTP_PASS`, not your Gmail password
+
+**`Resend API key invalid`**
+Ensure the key starts with `re_` and was generated from your Resend dashboard. Keys are environment-specific — check you're not using a test key in production.
+
+**`Template not found`**
+The template key in `sendMail({ template: "..." })` must exactly match a key in `src/lib/mail-templates/index.ts`. Keys are case-sensitive.
+
+**Emails going to spam**
+For production:
+- Set up SPF, DKIM, and DMARC records for your sending domain
+- Use a reputable sending service (Resend, SendGrid, Postmark) rather than raw SMTP
+- Avoid spam trigger words in subject lines

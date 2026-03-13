@@ -161,3 +161,104 @@ const schema = z.object({
 - Webhook payload shape enforcement.
 - Search/filter query validation with type coercion.
 - ID/slug param validation for REST routes.
+
+---
+
+## Combining body, query, and params
+
+A single schema can validate all three parts of a request at once:
+
+```ts
+const updatePostSchema = z.object({
+  params: z.object({
+    id: z.string().uuid("Post ID must be a valid UUID"),
+  }),
+  query: z.object({
+    notify: z.enum(["true", "false"]).optional(),
+  }),
+  body: z.object({
+    title: z.string().min(1).max(200),
+    content: z.string().min(10),
+    published: z.boolean().optional().default(false),
+  }),
+});
+
+router.put("/posts/:id", validate(updatePostSchema), asyncHandler(async (req, res) => {
+  // req.params.id — validated UUID string
+  // req.query.notify — "true" | "false" | undefined
+  // req.body.title, .content, .published — validated and typed
+  res.json({ updated: true });
+}));
+```
+
+---
+
+## Reusable Schema Blocks
+
+Define shared schema fragments once and compose them:
+
+```ts
+// src/lib/schemas/common.ts
+import { z } from "zod";
+
+export const pagination = z.object({
+  page: z.coerce.number().int().positive().default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(20),
+});
+
+export const uuidParam = z.object({
+  id: z.string().uuid(),
+});
+```
+
+Use them in route schemas:
+
+```ts
+import { pagination, uuidParam } from "../lib/schemas/common";
+
+const listPostsSchema = z.object({
+  params: uuidParam,
+  query: pagination.extend({
+    status: z.enum(["draft", "published"]).optional(),
+  }),
+});
+```
+
+---
+
+## TypeScript Type Inference
+
+The `validate` middleware rewrites `req.body`, `req.query`, and `req.params` with parsed values, but TypeScript still needs a type cast to use them safely in your handler:
+
+```ts
+type CreateUserBody = z.infer<typeof createUserSchema>["body"];
+
+router.post("/users", validate(createUserSchema), asyncHandler(async (req, res) => {
+  const { email, name } = req.body as CreateUserBody;
+  res.status(201).json({ email, name });
+}));
+```
+
+---
+
+## Troubleshooting
+
+**`422` returned even though the data looks correct**
+Zod schemas are strict by default on `.object()`. Extra fields not defined in the schema cause no error (Zod strips them), but missing required fields do. Use `.partial()` for optional fields and `.passthrough()` if you want to allow extra keys.
+
+**`z.coerce.number()` returning `NaN`**
+Query string values are always strings. Use `z.coerce.number()` to convert them. If the value is empty string (`""`), coercion produces `NaN` — add `.min(1)` or make the field optional:
+```ts
+z.coerce.number().int().positive().optional()
+```
+
+**Validation passes but `req.body` is still the raw unvalidated value**
+Ensure `express.json()` middleware is registered in `app.ts` before your routes. Without it, `req.body` is `undefined` and Zod validates `undefined` against your schema.
+
+**Custom error messages not appearing in responses**
+Pass a message to the Zod schema method:
+```ts
+z.string().email("Please provide a valid email address")
+z.string().min(8, "Password must be at least 8 characters")
+```
+The message appears in the `errors[].message` field of the `422` response.
