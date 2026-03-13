@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { Command } from "commander";
+import { Command, InvalidArgumentError } from "commander";
 import { init } from "./commands/init";
 import { add } from "./commands/add";
 
@@ -18,6 +18,18 @@ program
 program
     .command("add <module>")
     .description("Add a module to your project")
+    .option(
+        "--auth-provider <provider>",
+        "Auth provider for auth module (better-auth|jwt)",
+        (value) => {
+            if (value === "better-auth" || value === "jwt") {
+                return value;
+            }
+
+            throw new InvalidArgumentError("auth-provider must be 'better-auth' or 'jwt'");
+        }
+    )
+    .option("-y, --yes", "Skip prompts and use defaults")
     .action((module, options) => add(module, options));
 
 program.parse(process.argv);

@@ -1,24 +1,39 @@
 ---
 title: Auth
-description: Add production-ready authentication with Better Auth
+description: Add production-ready authentication with Better Auth or JWT
 ---
 ## Overview
 
-Add production-ready email/password authentication and session-based user access to your backend.
+Add production-ready email/password authentication to your backend.
+
+`zuro add auth` now supports two providers:
+- `better-auth` (default): session/cookie auth via Better Auth.
+- `jwt`: access/refresh token auth with local JWT handlers.
 
 ---
 
 ## Install
 
+Interactive choice:
+
 ```bash
 npx zuro add auth
 ```
 
-Installs Better Auth, scaffolds auth files/routes, and auto-installs required module dependencies (`database`, `error-handler`) if missing.
+Direct provider selection:
+
+```bash
+npx zuro add auth --auth-provider better-auth
+npx zuro add auth --auth-provider jwt
+```
+
+Auth install auto-resolves required module dependencies (`database`, `error-handler`) if missing.
 
 ---
 
 ## What This Generates
+
+Shared files:
 
 ```text
 src/
@@ -30,63 +45,41 @@ src/
 │ └ user.routes.ts
 └ db/schema/
   └ auth.ts       # mysql projects receive mysql-compatible auth schema
-
-src/app.ts         # updated: mounts /api/auth handler
-src/routes/index.ts # updated: mounts /users routes
 ```
 
-- `lib/auth.ts`: Better Auth setup (`basePath: /api/auth`) with Drizzle adapter.
-- `controllers/user.controller.ts`: authenticated profile handler (`/api/users/me`).
-- `routes/user.routes.ts`: user routes wired with async error handling.
-- `db/schema/auth.ts`: auth tables (`user`, `session`, `account`, `verification`).
-- `app.ts` and `routes/index.ts`: route mounts injected automatically.
+JWT-only additional files:
+
+```text
+src/
+├ controllers/
+│ └ auth.controller.ts
+└ routes/
+  └ auth.routes.ts
+```
+
+Route wiring updates:
+- Better Auth: `app.ts` mounts `/api/auth` handler directly.
+- JWT: route mounts are injected for `/api/auth` and `/api/users`.
 
 ---
 
-## Quick Example
+## Provider Behavior
 
-```bash
-curl -X POST http://localhost:3000/api/auth/sign-up/email \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "Ava",
-    "email": "ava@example.com",
-    "password": "password123"
-  }'
-```
+### Better Auth (default)
+- Uses Better Auth session flow.
+- Session is resolved from cookies.
+- Best if you want managed auth primitives and plugin ecosystem.
 
-Example request:
-
-```http
-GET /api/users/me
-Cookie: <better-auth-session-cookie>
-```
-
-Example response:
-
-```json
-{
-  "user": {
-    "id": "user_123",
-    "email": "ava@example.com",
-    "name": "Ava"
-  }
-}
-```
-
----
-
-## How It Works
-
-1. Client calls `/api/auth/*`.
-2. Better Auth handler processes auth flow and issues session/cookie.
-3. Protected routes call `auth.api.getSession(...)`.
-4. Session is resolved from database-backed storage.
-5. Authenticated response is returned (for example `/api/users/me`).
+### JWT
+- Uses signed access + refresh tokens.
+- Access token is read from `Authorization: Bearer <token>`.
+- Refresh tokens are persisted (hashed) in DB and rotated on refresh.
 
 ---
 
 ## Configuration
+
+Better Auth env:
 
 ```bash
 BETTER_AUTH_SECRET=your-secret-key-at-least-32-characters-long
@@ -94,67 +87,60 @@ BETTER_AUTH_URL=http://localhost:3000
 DATABASE_URL=postgresql://postgres@localhost:5432/mydb
 ```
 
-- `BETTER_AUTH_SECRET`: signing/encryption secret for auth sessions and tokens.
-- `BETTER_AUTH_URL`: backend base URL used by Better Auth.
-- `DATABASE_URL`: Drizzle database connection for auth tables and sessions.
+JWT env:
+
+```bash
+JWT_ACCESS_SECRET=your-jwt-access-secret-at-least-32-characters
+JWT_REFRESH_SECRET=your-jwt-refresh-secret-at-least-32-characters
+JWT_ACCESS_EXPIRES_IN=15m
+JWT_REFRESH_EXPIRES_IN=7d
+DATABASE_URL=postgresql://postgres@localhost:5432/mydb
+```
 
 ---
 
 ## API Reference
 
-- `POST /api/auth/sign-up/email`: register user with email/password.
-- `POST /api/auth/sign-in/email`: authenticate user and create session.
-- `POST /api/auth/sign-out`: invalidate current session.
-- `GET /api/auth/get-session`: read current session from cookie.
-- `GET /api/users/me`: return authenticated user profile from active session.
+Better Auth endpoints:
+- `POST /api/auth/sign-up/email`
+- `POST /api/auth/sign-in/email`
+- `POST /api/auth/sign-out`
+- `GET /api/auth/get-session`
+- `GET /api/users/me`
+
+JWT endpoints:
+- `POST /api/auth/sign-up/email`
+- `POST /api/auth/sign-in/email`
+- `POST /api/auth/refresh`
+- `POST /api/auth/sign-out`
+- `GET /api/auth/get-session`
+- `GET /api/users/me`
 
 ---
 
-## Advanced Usage
+## Quick Example (JWT)
 
-Protect custom routes with Better Auth session checks:
-
-```ts
-import { Router } from "express";
-import { fromNodeHeaders } from "better-auth/node";
-import { auth } from "../lib/auth";
-import { UnauthorizedError } from "../lib/errors";
-import { asyncHandler } from "../middleware/error-handler";
-
-const router = Router();
-
-router.get("/dashboard", asyncHandler(async (req, res) => {
-  const session = await auth.api.getSession({
-    headers: fromNodeHeaders(req.headers),
-  });
-
-  if (!session) {
-    throw new UnauthorizedError("Not authenticated");
-  }
-
-  res.json({ message: `Welcome, ${session.user.name}` });
-}));
+```bash
+curl -X POST http://localhost:3000/api/auth/sign-in/email \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "ava@example.com",
+    "password": "password123"
+  }'
 ```
 
-Run migrations after install:
+Use returned `accessToken` as bearer token:
+
+```http
+GET /api/users/me
+Authorization: Bearer <access-token>
+```
+
+---
+
+## Run Migrations
 
 ```bash
 npx drizzle-kit generate
 npx drizzle-kit migrate
 ```
-
-Optional docs integration:
-
-```bash
-# During auth install prompt:
-# Install API docs module (Scalar + OpenAPI) too? -> Yes
-```
-
----
-
-## Example Use Cases
-
-- User signup/login flows for web or mobile backends.
-- Session-based dashboard/profile APIs.
-- Protecting private routes with server-side session checks.
-- Multi-module apps that combine `auth` with `uploads` and `database`.

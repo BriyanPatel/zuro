@@ -218,6 +218,16 @@
           "type": "library"
         },
         {
+          "path": "express/controllers/auth.controller.jwt.ts",
+          "target": "controllers/auth.controller.ts",
+          "type": "library"
+        },
+        {
+          "path": "express/routes/auth.routes.jwt.ts",
+          "target": "routes/auth.routes.ts",
+          "type": "library"
+        },
+        {
           "path": "express/db/schema/auth.ts",
           "target": "db/schema/auth.ts",
           "type": "library"

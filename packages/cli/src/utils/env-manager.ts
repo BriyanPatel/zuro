@@ -164,6 +164,20 @@ export const ENV_CONFIGS = {
             { name: "BETTER_AUTH_URL", schema: "z.string().url()" },
         ],
     },
+    "auth-jwt": {
+        envVars: {
+            JWT_ACCESS_SECRET: "your-jwt-access-secret-at-least-32-characters",
+            JWT_REFRESH_SECRET: "your-jwt-refresh-secret-at-least-32-characters",
+            JWT_ACCESS_EXPIRES_IN: "15m",
+            JWT_REFRESH_EXPIRES_IN: "7d",
+        },
+        schemaFields: [
+            { name: "JWT_ACCESS_SECRET", schema: "z.string().min(32)" },
+            { name: "JWT_REFRESH_SECRET", schema: "z.string().min(32)" },
+            { name: "JWT_ACCESS_EXPIRES_IN", schema: "z.string().min(2)" },
+            { name: "JWT_REFRESH_EXPIRES_IN", schema: "z.string().min(2)" },
+        ],
+    },
     mailer: {
         envVars: {
             SMTP_HOST: "smtp.example.com",

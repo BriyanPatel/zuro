@@ -30,6 +30,8 @@ import {
     injectAuthDocs,
     promptAuthConfig,
     printAuthHints,
+    detectInstalledAuthProvider,
+    type AuthProvider,
 } from "../handlers/auth.handler";
 import {
     promptMailerConfig,
@@ -64,6 +66,7 @@ export interface AddCommandOptions {
     dialect?: string;
     dbUrl?: string;
     yes?: boolean;
+    authProvider?: AuthProvider;
 }
 
 function resolvePackageManager(projectRoot: string) {
@@ -138,6 +141,8 @@ export const add = async (moduleName: string, options: AddCommandOptions = {}) =
     let selectedDatabaseDialect: DatabaseDialect | null = null;
     let generatedAuthSecret = false;
     let authDatabaseDialect: DatabaseModuleName | null = null;
+    let authProvider: AuthProvider = options.authProvider || "better-auth";
+    let uploadAuthProvider: AuthProvider | null = null;
     let customSmtpVars: Record<string, string> | undefined;
     let usedDefaultSmtp = false;
     let mailerProvider: "smtp" | "resend" = "smtp";
@@ -170,6 +175,7 @@ export const add = async (moduleName: string, options: AddCommandOptions = {}) =
         const result = await promptAuthConfig(projectRoot, srcDir, options);
         if (!result) return;
 
+        authProvider = result.authProvider;
         shouldInstallDocsForAuth = result.shouldInstallDocsForAuth;
         authDatabaseDialect = result.authDatabaseDialect;
     }
@@ -223,6 +229,7 @@ export const add = async (moduleName: string, options: AddCommandOptions = {}) =
             }
 
             uploadDatabaseDialect = await detectInstalledDatabaseDialect(projectRoot, srcDir);
+            uploadAuthProvider = await detectInstalledAuthProvider(projectRoot, srcDir);
             if (uploadConfig.useDatabaseMetadata) {
                 if (uploadDatabaseDialect === "database-prisma-pg" || uploadDatabaseDialect === "database-prisma-mysql") {
                     spinner.fail("Uploads metadata currently supports Drizzle-based database setup only.");
@@ -263,6 +270,16 @@ export const add = async (moduleName: string, options: AddCommandOptions = {}) =
             }
         }
 
+        if (resolvedModuleName === "auth") {
+            if (authProvider === "jwt") {
+                runtimeDeps = ["jsonwebtoken", "bcryptjs"];
+                devDeps = ["@types/jsonwebtoken", "@types/bcryptjs"];
+            } else {
+                runtimeDeps = ["better-auth"];
+                devDeps = [];
+            }
+        }
+
         if (resolvedModuleName === "uploads" && uploadConfig) {
             runtimeDeps = ["multer"];
             devDeps = ["@types/multer"];
@@ -291,12 +308,60 @@ export const add = async (moduleName: string, options: AddCommandOptions = {}) =
 
             if (
                 resolvedModuleName === "auth"
+                && authProvider === "better-auth"
+                && (file.target === "routes/auth.routes.ts" || file.target === "controllers/auth.controller.ts")
+            ) {
+                continue;
+            }
+
+            if (
+                resolvedModuleName === "auth"
                 && file.target === "db/schema/auth.ts"
                 && authDatabaseDialect === "database-mysql"
             ) {
                 fetchPath = "express/db/schema/auth.mysql.ts";
                 expectedSha256 = undefined;
                 expectedSize = undefined;
+            }
+
+            if (resolvedModuleName === "auth" && authProvider === "jwt") {
+                if (file.target === "lib/auth.ts") {
+                    fetchPath = "express/lib/auth.jwt.ts";
+                    expectedSha256 = undefined;
+                    expectedSize = undefined;
+                }
+
+                if (file.target === "controllers/user.controller.ts") {
+                    fetchPath = "express/controllers/user.controller.jwt.ts";
+                    expectedSha256 = undefined;
+                    expectedSize = undefined;
+                }
+
+                if (file.target === "routes/user.routes.ts") {
+                    fetchPath = "express/routes/user.routes.jwt.ts";
+                    expectedSha256 = undefined;
+                    expectedSize = undefined;
+                }
+
+                if (file.target === "controllers/auth.controller.ts") {
+                    fetchPath = "express/controllers/auth.controller.jwt.ts";
+                    expectedSha256 = undefined;
+                    expectedSize = undefined;
+                }
+
+                if (file.target === "routes/auth.routes.ts") {
+                    fetchPath = "express/routes/auth.routes.jwt.ts";
+                    expectedSha256 = undefined;
+                    expectedSize = undefined;
+                }
+
+                if (file.target === "db/schema/auth.ts") {
+                    fetchPath = authDatabaseDialect === "database-mysql"
+                        ? "express/db/schema/auth.mysql.jwt.ts"
+                        : "express/db/schema/auth.jwt.ts";
+                    expectedSha256 = undefined;
+                    expectedSize = undefined;
+                }
             }
 
             if (
@@ -327,7 +392,12 @@ export const add = async (moduleName: string, options: AddCommandOptions = {}) =
                 }
 
                 if (file.target === "middleware/upload-auth.ts") {
-                    fetchPath = `express/middleware/upload-auth.${uploadConfig.authMode}.ts`;
+                    if (uploadConfig.authMode === "none") {
+                        fetchPath = "express/middleware/upload-auth.none.ts";
+                    } else {
+                        const providerSuffix = uploadAuthProvider === "jwt" ? "jwt" : "better-auth";
+                        fetchPath = `express/middleware/upload-auth.required.${providerSuffix}.ts`;
+                    }
                     expectedSha256 = undefined;
                     expectedSize = undefined;
                 }
@@ -381,7 +451,7 @@ export const add = async (moduleName: string, options: AddCommandOptions = {}) =
 
         if (resolvedModuleName === "auth") {
             spinner.start("Configuring routes...");
-            const injected = await injectAuthRoutes(projectRoot, srcDir);
+            const injected = await injectAuthRoutes(projectRoot, srcDir, authProvider);
             if (injected) {
                 spinner.succeed("Routes configured");
             } else {
@@ -391,7 +461,7 @@ export const add = async (moduleName: string, options: AddCommandOptions = {}) =
             const docsInstalled = await isDocsModuleInstalled(projectRoot, srcDir);
             if (docsInstalled) {
                 spinner.start("Adding auth endpoints to API docs...");
-                const authDocsInjected = await injectAuthDocs(projectRoot, srcDir);
+                const authDocsInjected = await injectAuthDocs(projectRoot, srcDir, authProvider);
                 if (authDocsInjected) {
                     spinner.succeed("Auth endpoints added to API docs");
                 } else {
@@ -431,8 +501,9 @@ export const add = async (moduleName: string, options: AddCommandOptions = {}) =
 
             const authInstalled = await isAuthModuleInstalled(projectRoot, srcDir);
             if (authInstalled) {
+                const installedAuthProvider = await detectInstalledAuthProvider(projectRoot, srcDir) || "better-auth";
                 spinner.start("Adding auth endpoints to API docs...");
-                const authDocsInjected = await injectAuthDocs(projectRoot, srcDir);
+                const authDocsInjected = await injectAuthDocs(projectRoot, srcDir, installedAuthProvider);
                 if (authDocsInjected) {
                     spinner.succeed("Auth endpoints added to API docs");
                 } else {
@@ -482,6 +553,9 @@ export const add = async (moduleName: string, options: AddCommandOptions = {}) =
         if (resolvedModuleName === "mailer" && mailerProvider === "resend") {
             envConfigKey = "mailer-resend";
         }
+        if (resolvedModuleName === "auth" && authProvider === "jwt") {
+            envConfigKey = "auth-jwt";
+        }
 
         const envConfig = ENV_CONFIGS[envConfigKey as keyof typeof ENV_CONFIGS];
         if (envConfig) {
@@ -498,10 +572,24 @@ export const add = async (moduleName: string, options: AddCommandOptions = {}) =
             }
 
             if (resolvedModuleName === "auth") {
-                const hasExistingSecret = await hasEnvVariable(projectRoot, "BETTER_AUTH_SECRET");
-                if (!hasExistingSecret) {
-                    envVars.BETTER_AUTH_SECRET = randomBytes(32).toString("hex");
-                    generatedAuthSecret = true;
+                if (authProvider === "better-auth") {
+                    const hasExistingSecret = await hasEnvVariable(projectRoot, "BETTER_AUTH_SECRET");
+                    if (!hasExistingSecret) {
+                        envVars.BETTER_AUTH_SECRET = randomBytes(32).toString("hex");
+                        generatedAuthSecret = true;
+                    }
+                } else {
+                    const hasAccessSecret = await hasEnvVariable(projectRoot, "JWT_ACCESS_SECRET");
+                    if (!hasAccessSecret) {
+                        envVars.JWT_ACCESS_SECRET = randomBytes(32).toString("hex");
+                        generatedAuthSecret = true;
+                    }
+
+                    const hasRefreshSecret = await hasEnvVariable(projectRoot, "JWT_REFRESH_SECRET");
+                    if (!hasRefreshSecret) {
+                        envVars.JWT_REFRESH_SECRET = randomBytes(32).toString("hex");
+                        generatedAuthSecret = true;
+                    }
                 }
             }
 
@@ -551,7 +639,7 @@ export const add = async (moduleName: string, options: AddCommandOptions = {}) =
         }
 
         if (resolvedModuleName === "auth") {
-            printAuthHints(generatedAuthSecret);
+            printAuthHints(generatedAuthSecret, authProvider);
         }
 
         if (resolvedModuleName === "mailer") {
