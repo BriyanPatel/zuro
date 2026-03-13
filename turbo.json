@@ -1,5 +1,10 @@
 {
     "$schema": "https://turbo.build/schema.json",
+    "globalEnv": [
+        "SITE_URL",
+        "GA4_MEASUREMENT_ID",
+        "GOOGLE_SITE_VERIFICATION"
+    ],
     "globalDependencies": [
         "**/.env.*local"
     ],
