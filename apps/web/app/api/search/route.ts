@@ -1,4 +1,10 @@
 import { source } from '@/lib/source';
 import { createFromSource } from 'fumadocs-core/search/server';
 
-export const { GET } = createFromSource(source);
+const handlers = createFromSource(source);
+
+export async function GET(request: Request) {
+  const response = await handlers.GET(request);
+  response.headers.set('X-Robots-Tag', 'noindex, nofollow');
+  return response;
+}

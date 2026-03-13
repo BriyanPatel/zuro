@@ -11,6 +11,8 @@ export function LandingFooter() {
 
         <div className="space-y-2">
           <p className="text-xs uppercase tracking-[0.16em] text-zinc-500">Product</p>
+          <Link href="/nodejs-backend-starter" className="block hover:text-zinc-200">Node.js Starter</Link>
+          <Link href="/express-typescript-boilerplate" className="block hover:text-zinc-200">Express TypeScript Boilerplate</Link>
           <Link href="/docs/init" className="block hover:text-zinc-200">Init</Link>
           <Link href="/docs" className="block hover:text-zinc-200">Documentation</Link>
           <Link href="/docs/database" className="block hover:text-zinc-200">Database</Link>
@@ -20,6 +22,8 @@ export function LandingFooter() {
 
         <div className="space-y-2">
           <p className="text-xs uppercase tracking-[0.16em] text-zinc-500">Modules</p>
+          <Link href="/openapi-starter-express" className="block hover:text-zinc-200">OpenAPI Starter</Link>
+          <Link href="/backend-auth-module-express" className="block hover:text-zinc-200">Auth Module</Link>
           <Link href="/docs/validator" className="block hover:text-zinc-200">Validator</Link>
           <Link href="/docs/error-handler" className="block hover:text-zinc-200">Error Handler</Link>
           <Link href="/docs/mailer" className="block hover:text-zinc-200">Mailer</Link>
@@ -29,6 +33,8 @@ export function LandingFooter() {
 
         <div className="space-y-2">
           <p className="text-xs uppercase tracking-[0.16em] text-zinc-500">Community</p>
+          <Link href="/zuro-vs-manual-express-setup" className="block hover:text-zinc-200">Zuro vs Manual Setup</Link>
+          <Link href="/zuro-vs-framework-backend-starters" className="block hover:text-zinc-200">Zuro vs Framework Starters</Link>
           <a href="https://github.com/BriyanPatel/zuro" target="_blank" rel="noreferrer" className="block hover:text-zinc-200">
             GitHub
           </a>

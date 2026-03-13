@@ -1,5 +1,8 @@
+"use client";
+
 import Link from "next/link";
 import { ArrowRight, Github } from "lucide-react";
+import { trackSeoEvent } from "@/lib/seo/analytics";
 
 export function CtaSection() {
   return (
@@ -15,6 +18,12 @@ export function CtaSection() {
       <div className="relative mt-8 flex flex-wrap items-center justify-center gap-3">
         <Link
           href="/docs/init"
+          onClick={() =>
+            trackSeoEvent("docs_cta_click", {
+              location: "cta_section",
+              target: "/docs/init",
+            })
+          }
           className="inline-flex items-center gap-2 rounded-md border border-emerald-400/40 bg-emerald-400/10 px-4 py-2.5 text-sm font-medium text-emerald-300 transition hover:bg-emerald-400/20"
         >
           Initialize project
@@ -24,6 +33,12 @@ export function CtaSection() {
           href="https://github.com/BriyanPatel/zuro"
           target="_blank"
           rel="noreferrer"
+          onClick={() =>
+            trackSeoEvent("outbound_click", {
+              location: "cta_section",
+              target: "github_repo",
+            })
+          }
           className="inline-flex items-center gap-2 rounded-md border border-white/15 bg-white/5 px-4 py-2.5 text-sm font-medium text-zinc-200 transition hover:bg-white/10"
         >
           <Github className="h-4 w-4" />

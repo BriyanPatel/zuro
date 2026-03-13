@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { ArrowRight, BookOpen, Check, Copy, Terminal } from "lucide-react";
+import { trackSeoEvent } from "@/lib/seo/analytics";
 
 const tabs = ["init", "add", "output"] as const;
 type HeroTab = (typeof tabs)[number];
@@ -14,6 +15,10 @@ export function HeroSection() {
 
   const copyCmd = () => {
     navigator.clipboard.writeText("npx zuro-cli init my-mvp");
+    trackSeoEvent("init_command_copy", {
+      location: "hero",
+      command: "npx zuro-cli init my-mvp",
+    });
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
   };
@@ -52,6 +57,12 @@ export function HeroSection() {
         <div className="mt-7 flex flex-wrap items-center gap-3">
           <Link
             href="/docs/init"
+            onClick={() =>
+              trackSeoEvent("docs_cta_click", {
+                location: "hero_primary",
+                target: "/docs/init",
+              })
+            }
             className="inline-flex items-center gap-2 rounded-md border border-emerald-400/40 bg-emerald-400/10 px-4 py-2.5 text-sm font-medium text-emerald-300 transition hover:bg-emerald-400/20"
           >
             Get started
@@ -59,6 +70,12 @@ export function HeroSection() {
           </Link>
           <Link
             href="/docs"
+            onClick={() =>
+              trackSeoEvent("docs_cta_click", {
+                location: "hero_secondary",
+                target: "/docs",
+              })
+            }
             className="inline-flex items-center gap-2 rounded-md border border-white/15 bg-white/5 px-4 py-2.5 text-sm font-medium text-zinc-200 transition hover:bg-white/10"
           >
             <BookOpen className="h-4 w-4" />
