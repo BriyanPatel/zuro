@@ -84,6 +84,25 @@ export function HeroSection() {
         </div>
 
         <p className="mt-6 text-xs text-zinc-500">Modules: auth, database, validator, docs, mailer, error-handler, rate-limiter.</p>
+        <div className="mt-4 flex flex-wrap items-center gap-3 text-xs text-zinc-500">
+          <a
+            href="https://www.npmjs.com/package/zuro-cli"
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-2 rounded-md border border-white/10 bg-white/[0.03] px-2.5 py-1.5 text-zinc-300 hover:text-white"
+          >
+            npm package
+            <span className="rounded border border-emerald-400/35 bg-emerald-400/10 px-1.5 py-0.5 text-[10px] font-medium text-emerald-300">
+              downloads badge
+            </span>
+          </a>
+          <a href="https://github.com/BriyanPatel/zuro" target="_blank" rel="noreferrer" className="hover:text-zinc-300">
+            Maintained by Briyan Patel on GitHub
+          </a>
+          <a href="https://github.com/BriyanPatel/zuro/releases" target="_blank" rel="noreferrer" className="hover:text-zinc-300">
+            Changelog
+          </a>
+        </div>
       </motion.div>
 
       <motion.aside

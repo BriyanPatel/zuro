@@ -1,0 +1,29 @@
+name: SEO Sitemap Check
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 5 * * 1'
+
+jobs:
+  validate-sitemap:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Install dependencies
+        run: corepack pnpm install --frozen-lockfile
+
+      - name: Validate sitemap URLs
+        env:
+          SITE_URL: https://zuro-cli.devbybriyan.com
+        run: corepack pnpm --filter web seo:validate-sitemap

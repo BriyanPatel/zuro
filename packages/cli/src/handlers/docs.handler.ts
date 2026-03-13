@@ -1,5 +1,6 @@
 import path from "path";
 import fs from "fs-extra";
+import chalk from "chalk";
 import { appendImport } from "../utils/code-inject";
 
 /**
@@ -90,7 +91,6 @@ export async function injectDocsRoutes(projectRoot: string, srcDir: string): Pro
  * Prints post-install hints for the docs module.
  */
 export function printDocsHints() {
-    const chalk = require("chalk");
     console.log(chalk.yellow("ℹ API docs available at: /api/docs"));
     console.log(chalk.yellow("ℹ OpenAPI spec available at: /api/docs/openapi.json"));
 }

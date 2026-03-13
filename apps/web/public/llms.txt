@@ -1,0 +1,26 @@
+# Zuro
+
+> CLI tool for generating production-ready Express + TypeScript backend modules.
+
+## Docs
+- [Introduction](https://zuro-cli.devbybriyan.com/docs): Getting started and module selection guidance
+- [Init](https://zuro-cli.devbybriyan.com/docs/init): Scaffold a production-ready Express + TypeScript backend
+- [Auth](https://zuro-cli.devbybriyan.com/docs/auth): Backend auth module with Better Auth or JWT
+- [Database](https://zuro-cli.devbybriyan.com/docs/database): Drizzle or Prisma setup
+- [Uploads](https://zuro-cli.devbybriyan.com/docs/uploads): File upload module for S3, R2, and Cloudinary
+- [Validator](https://zuro-cli.devbybriyan.com/docs/validator): Request validation middleware
+- [API Docs](https://zuro-cli.devbybriyan.com/docs/docs): OpenAPI + Scalar generation
+- [Rate Limiter](https://zuro-cli.devbybriyan.com/docs/rate-limiter): Rate limiting middleware
+- [Mailer](https://zuro-cli.devbybriyan.com/docs/mailer): SMTP or Resend email module
+- [Error Handler](https://zuro-cli.devbybriyan.com/docs/error-handler): Centralized API error responses
+
+## Landing Pages
+- [Node.js Backend Starter](https://zuro-cli.devbybriyan.com/nodejs-backend-starter)
+- [Express TypeScript Boilerplate](https://zuro-cli.devbybriyan.com/express-typescript-boilerplate)
+- [Backend Auth Module for Express](https://zuro-cli.devbybriyan.com/backend-auth-module-express)
+- [Drizzle Starter for Express](https://zuro-cli.devbybriyan.com/drizzle-starter-express)
+- [Express Upload Module](https://zuro-cli.devbybriyan.com/express-upload-module)
+- [OpenAPI Starter for Express](https://zuro-cli.devbybriyan.com/openapi-starter-express)
+
+## Canonical
+- [Homepage](https://zuro-cli.devbybriyan.com)

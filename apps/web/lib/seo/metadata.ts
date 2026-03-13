@@ -8,10 +8,29 @@ type BuildPageMetadataArgs = {
   keywords?: string[];
   type?: 'website' | 'article';
   noIndex?: boolean;
+  publishedTime?: string;
+  modifiedTime?: string;
+  authors?: string[];
 };
 
+function normalizePath(path: string): string {
+  const withLeadingSlash = path.startsWith('/') ? path : `/${path}`;
+
+  if (withLeadingSlash === '/') {
+    return '/';
+  }
+
+  return withLeadingSlash.replace(/\/+$/, '');
+}
+
 export function absoluteUrl(path: string): string {
-  return new URL(path, siteUrl).toString();
+  const normalizedPath = normalizePath(path);
+
+  if (normalizedPath === '/') {
+    return siteUrl;
+  }
+
+  return new URL(normalizedPath, siteUrl).toString();
 }
 
 export function buildOgImageUrl(title: string, subtitle?: string): string {
@@ -32,6 +51,9 @@ export function buildPageMetadata({
   keywords,
   type = 'website',
   noIndex = false,
+  publishedTime,
+  modifiedTime,
+  authors,
 }: BuildPageMetadataArgs): Metadata {
   const canonical = absoluteUrl(path);
   const image = buildOgImageUrl(title, description);
@@ -61,6 +83,13 @@ export function buildPageMetadata({
       siteName: seoConfig.siteName,
       locale: seoConfig.defaultLocale,
       type,
+      ...(type === 'article'
+        ? {
+            publishedTime,
+            modifiedTime,
+            authors,
+          }
+        : {}),
       images: [
         {
           url: image,

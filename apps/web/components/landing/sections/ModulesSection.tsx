@@ -1,4 +1,5 @@
-import { MODULES, ROADMAP_MODULES } from "../content";
+import Link from "next/link";
+import { FEATURED_LANDING_GUIDES, MODULES, ROADMAP_MODULES } from "../content";
 
 export function ModulesSection() {
   return (
@@ -15,20 +16,43 @@ export function ModulesSection() {
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {MODULES.map((module) => (
-          <article
+          <Link
             key={module.name}
-            className="rounded-xl border border-white/10 bg-zinc-900/60 p-5 transition hover:border-emerald-400/30"
+            href={module.href}
+            className="rounded-xl border border-white/10 bg-zinc-900/60 p-5 transition hover:border-emerald-400/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300/70"
           >
-            <div className="mb-4 inline-flex h-10 w-10 items-center justify-center rounded-lg border border-emerald-400/30 bg-emerald-400/10 text-emerald-300">
-              <module.icon className="h-5 w-5" />
-            </div>
-            <h3 className="text-base font-semibold text-white">{module.name}</h3>
-            <p className="mt-2 text-sm leading-6 text-zinc-400">{module.description}</p>
-            <code className="mt-4 inline-flex rounded-md border border-white/10 bg-black/40 px-2.5 py-1 font-mono text-[11px] text-zinc-300">
-              {module.command}
-            </code>
-          </article>
+            <article>
+              <div className="mb-4 inline-flex h-10 w-10 items-center justify-center rounded-lg border border-emerald-400/30 bg-emerald-400/10 text-emerald-300">
+                <module.icon className="h-5 w-5" />
+              </div>
+              <h3 className="text-base font-semibold text-white">{module.name}</h3>
+              <p className="mt-2 text-sm leading-6 text-zinc-400">{module.description}</p>
+              <div className="mt-4 flex items-center justify-between gap-2">
+                <code className="inline-flex rounded-md border border-white/10 bg-black/40 px-2.5 py-1 font-mono text-[11px] text-zinc-300">
+                  {module.command}
+                </code>
+                <span className="text-xs font-medium text-emerald-300">Read docs</span>
+              </div>
+            </article>
+          </Link>
         ))}
+      </div>
+
+      <div className="rounded-xl border border-white/10 bg-zinc-900/40 p-5">
+        <p className="text-sm font-medium text-zinc-200">Explore key implementation guides</p>
+        <p className="mt-2 text-sm text-zinc-400">Use these landing pages to compare approaches before you scaffold your backend.</p>
+        <div className="mt-4 grid gap-3 md:grid-cols-3">
+          {FEATURED_LANDING_GUIDES.map((guide) => (
+            <Link
+              key={guide.href}
+              href={guide.href}
+              className="rounded-lg border border-white/10 bg-black/30 p-3 transition hover:border-emerald-400/30"
+            >
+              <p className="text-sm font-medium text-white">{guide.label}</p>
+              <p className="mt-1 text-xs leading-5 text-zinc-400">{guide.description}</p>
+            </Link>
+          ))}
+        </div>
       </div>
 
       <div className="rounded-xl border border-white/10 bg-black/50 p-5">

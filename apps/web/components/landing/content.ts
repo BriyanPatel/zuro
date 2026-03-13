@@ -17,6 +17,7 @@ export type ModuleItem = {
   name: string;
   command: string;
   description: string;
+  href: string;
   icon: LucideIcon;
 };
 
@@ -30,6 +31,12 @@ export type ComparisonRow = {
 export type FaqItem = {
   question: string;
   answer: string;
+};
+
+export type LandingGuide = {
+  href: string;
+  label: string;
+  description: string;
 };
 
 export const HERO_METRICS: Metric[] = [
@@ -82,53 +89,79 @@ export const MODULES: ModuleItem[] = [
     name: "Uploads",
     command: "zuro-cli add uploads",
     description: "S3, R2, or Cloudinary uploads with proxy, direct, and multipart flows.",
+    href: "/docs/uploads",
     icon: FileText,
   },
   {
     name: "Database",
     command: "zuro-cli add database",
     description: "Drizzle ORM with PostgreSQL or MySQL support.",
+    href: "/docs/database",
     icon: Database,
   },
   {
     name: "Auth",
     command: "zuro-cli add auth",
     description: "Signup, login, and session flows with Better-Auth.",
+    href: "/docs/auth",
     icon: Lock,
   },
   {
     name: "Error Handler",
     command: "zuro-cli add error-handler",
     description: "Consistent API errors with custom classes and middleware.",
+    href: "/docs/error-handler",
     icon: ShieldCheck,
   },
   {
     name: "Validator",
     command: "zuro-cli add validator",
     description: "Request validation middleware using Zod.",
+    href: "/docs/validator",
     icon: FileText,
   },
   {
     name: "Mailer",
     command: "zuro-cli add mailer",
     description: "Resend or SMTP with ready-to-edit templates.",
+    href: "/docs/mailer",
     icon: Mail,
   },
   {
     name: "API Docs",
     command: "zuro-cli add docs",
     description: "OpenAPI generation with Scalar UI.",
+    href: "/docs/docs",
     icon: Code2,
   },
   {
     name: "Rate Limiter",
     command: "zuro-cli add rate-limiter",
     description: "IP-based rate limiting with express-rate-limit.",
+    href: "/docs/rate-limiter",
     icon: ShieldCheck,
   },
 ];
 
 export const ROADMAP_MODULES = ["File upload", "Caching (Redis)", "Cron jobs", "WebSockets", "Payments (Stripe)"];
+
+export const FEATURED_LANDING_GUIDES: LandingGuide[] = [
+  {
+    href: "/nodejs-backend-starter",
+    label: "Node.js Backend Starter",
+    description: "Understand the fastest path from blank repo to production-ready Express foundation.",
+  },
+  {
+    href: "/express-typescript-boilerplate",
+    label: "Express TypeScript Boilerplate",
+    description: "Compare baseline structure decisions before you commit to architecture patterns.",
+  },
+  {
+    href: "/backend-auth-module-express",
+    label: "Backend Auth Module",
+    description: "Review auth module setup choices and integration flow with database + validation.",
+  },
+];
 
 export const COMPARISON_ROWS: ComparisonRow[] = [
   {

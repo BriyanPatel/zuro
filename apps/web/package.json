@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
-    "seo:audit": "lhci autorun --config=.lighthouserc.json"
+    "seo:audit": "lhci autorun --config=.lighthouserc.json",
+    "seo:validate-sitemap": "node ./scripts/validate-sitemap.mjs"
   },
   "dependencies": {
     "@next/third-parties": "^16.1.6",

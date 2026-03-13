@@ -7,7 +7,8 @@
     "dev:registry": "corepack pnpm --filter @zuro/templates dev:registry",
     "dev": "corepack pnpm -r --parallel --if-present dev",
     "lint": "corepack pnpm -r --if-present lint",
-    "format": "prettier --write \"**/*.{ts,tsx,md}\""
+    "format": "prettier --write \"**/*.{ts,tsx,md}\"",
+    "seo:validate-sitemap": "corepack pnpm --filter web seo:validate-sitemap"
   },
   "devDependencies": {
     "turbo": "latest",

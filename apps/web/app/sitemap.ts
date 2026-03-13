@@ -22,7 +22,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
     return {
       url: absoluteUrl(path),
-      lastModified: new Date(),
       changeFrequency: isDocs ? 'weekly' : 'monthly',
       priority: path === '/' ? 1 : isDocs ? 0.8 : 0.7,
     };

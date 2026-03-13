@@ -6,15 +6,26 @@ export default function robots(): MetadataRoute.Robots {
     rules: [
       {
         userAgent: '*',
-        allow: '/',
+        allow: ['/api/og', '/'],
         disallow: ['/api/', '/api/search'],
       },
       {
-        userAgent: '*',
-        allow: ['/api/og'],
+        userAgent: 'GPTBot',
+        allow: '/',
+      },
+      {
+        userAgent: 'ClaudeBot',
+        allow: '/',
+      },
+      {
+        userAgent: 'PerplexityBot',
+        allow: '/',
+      },
+      {
+        userAgent: 'Google-Extended',
+        allow: '/',
       },
     ],
     sitemap: [`${siteUrl}/sitemap.xml`],
-    host: siteUrl,
   };
 }
