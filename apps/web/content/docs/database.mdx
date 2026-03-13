@@ -165,3 +165,132 @@ Switching dialect/ORM safely:
 - Webhook event persistence for retries and idempotency.
 - Background jobs metadata and processing history.
 - File uploads metadata storage when using the `uploads` module.
+
+---
+
+## Schema Design (Drizzle)
+
+Define tables in `src/db/schema/` and export them from `src/db/schema/index.ts`.
+
+Create a users table:
+
+```ts
+// src/db/schema/users.ts
+import { pgTable, text, timestamp } from "drizzle-orm/pg-core";
+
+export const users = pgTable("users", {
+  id: text("id").primaryKey(),
+  email: text("email").notNull().unique(),
+  name: text("name"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+```
+
+Export from the schema index:
+
+```ts
+// src/db/schema/index.ts
+export * from "./users";
+```
+
+Re-run migrations after any schema change:
+
+```bash
+npx drizzle-kit generate
+npx drizzle-kit migrate
+```
+
+---
+
+## Querying Data (Drizzle)
+
+**Insert a record:**
+
+```ts
+import { db } from "../db";
+import { users } from "../db/schema";
+
+await db.insert(users).values({
+  id: crypto.randomUUID(),
+  email: "ava@example.com",
+  name: "Ava",
+});
+```
+
+**Select with a filter:**
+
+```ts
+import { eq } from "drizzle-orm";
+
+const user = await db.select().from(users).where(eq(users.email, "ava@example.com")).limit(1);
+```
+
+**Update a record:**
+
+```ts
+await db.update(users).set({ name: "Ava Smith" }).where(eq(users.id, "user_123"));
+```
+
+**Delete a record:**
+
+```ts
+await db.delete(users).where(eq(users.id, "user_123"));
+```
+
+---
+
+## Querying Data (Prisma)
+
+**Insert:**
+
+```ts
+import { db } from "../db";
+
+await db.user.create({
+  data: { id: crypto.randomUUID(), email: "ava@example.com", name: "Ava" },
+});
+```
+
+**Find:**
+
+```ts
+const user = await db.user.findUnique({ where: { email: "ava@example.com" } });
+```
+
+---
+
+## Troubleshooting
+
+**`Cannot connect to database`**
+Verify your `DATABASE_URL` is correct and the database server is running:
+```bash
+# PostgreSQL — test connection
+psql $DATABASE_URL -c "SELECT 1"
+```
+
+**`relation "users" does not exist`**
+You need to run migrations before querying:
+```bash
+npx drizzle-kit generate
+npx drizzle-kit migrate
+```
+
+**`Column does not exist` after schema change**
+Generate and apply a new migration after every schema edit:
+```bash
+npx drizzle-kit generate  # creates a new migration file
+npx drizzle-kit migrate   # applies it to the database
+```
+
+**MySQL `ER_NOT_SUPPORTED_AUTH_MODE` error**
+Your MySQL server may require the legacy auth plugin. Update your connection string or run:
+```sql
+ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY 'password';
+FLUSH PRIVILEGES;
+```
+
+**Prisma client out of sync**
+After schema changes, regenerate the Prisma client:
+```bash
+npx prisma generate
+```

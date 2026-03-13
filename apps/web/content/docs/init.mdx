@@ -137,3 +137,91 @@ npx zuro-cli add uploads
 - Webhook processing service: start with `/api` routes and structured logging.
 - Background jobs admin API: bootstrap quickly with health checks and env validation.
 - File uploads backend: scaffold with `init`, then add `uploads` and `database`.
+
+---
+
+## Understanding Generated Files
+
+**`src/app.ts`** — the Express application factory. Sets up:
+- `helmet()` for HTTP security headers (XSS, clickjacking, MIME sniffing protection)
+- `cors()` configured from environment variables
+- `express.json()` and `express.urlencoded()` body parsers
+- `/health` endpoint returning `{ status: "ok", timestamp }` for uptime monitoring
+- `/api` namespace routed to `src/routes/index.ts`
+
+**`src/server.ts`** — the process entry point. Calls `app.listen()` and handles:
+- Graceful shutdown on `SIGTERM` and `SIGINT` signals
+- Draining active connections before exit
+
+**`src/env.ts`** — environment variable validation using Zod. Reads `process.env` at startup and throws a descriptive error if required variables are missing or malformed. This prevents runtime surprises from misconfigured deployments.
+
+```ts
+// Example of what env.ts validates
+const envSchema = z.object({
+  PORT: z.coerce.number().default(3000),
+  NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
+});
+```
+
+**`src/routes/index.ts`** — the root API router. Add your feature routes here:
+
+```ts
+import { Router } from "express";
+const router = Router();
+
+// Add your routes
+router.use("/users", usersRouter);
+
+export default router;
+```
+
+**`src/lib/logger.ts`** — Pino logger instance. Configured for pretty output in development and JSON output in production (detected via `NODE_ENV`).
+
+```ts
+import { logger } from "./lib/logger";
+logger.info({ userId: "123" }, "User signed in");
+```
+
+---
+
+## Middleware Stack
+
+The generated middleware stack runs in this order on every request:
+
+| Order | Middleware | Purpose |
+|-------|-----------|---------|
+| 1 | `helmet()` | Sets 11 security HTTP headers |
+| 2 | `cors()` | Handles CORS preflight and headers |
+| 3 | `express.json()` | Parses JSON request bodies |
+| 4 | `express.urlencoded()` | Parses form-encoded bodies |
+| 5 | Route handlers | Your application logic |
+
+---
+
+## Troubleshooting
+
+**`Port 3000 is already in use`**
+Change the port in your `.env` file:
+```bash
+PORT=3001
+```
+
+**`Environment variable validation failed`**
+`src/env.ts` throws on startup if a required variable is missing. Check your `.env` file matches the schema in `src/env.ts`. Each module that adds env vars (database, auth) appends to this schema automatically.
+
+**`Cannot find module '@/...'`**
+Ensure your `tsconfig.json` includes the path alias. The generated config maps `@/*` to `./src/*`:
+```json
+{
+  "compilerOptions": {
+    "paths": { "@/*": ["./src/*"] }
+  }
+}
+```
+
+**CORS errors from frontend**
+Update the CORS origin in `src/app.ts` to match your frontend URL:
+```ts
+cors({ origin: env.CORS_ORIGIN })
+```
+Then add `CORS_ORIGIN=http://localhost:5173` to your `.env`.

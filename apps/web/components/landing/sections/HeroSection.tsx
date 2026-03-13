@@ -9,9 +9,22 @@ import { trackSeoEvent } from "@/lib/seo/analytics";
 const tabs = ["init", "add", "output"] as const;
 type HeroTab = (typeof tabs)[number];
 
-export function HeroSection() {
+type HeroSectionProps = {
+  monthlyDownloads?: number | null;
+  githubStars?: number | null;
+};
+
+export function HeroSection({ monthlyDownloads, githubStars }: HeroSectionProps) {
   const [copied, setCopied] = useState(false);
   const [activeTab, setActiveTab] = useState<HeroTab>("init");
+  const downloadsLabel =
+    typeof monthlyDownloads === "number" && Number.isFinite(monthlyDownloads)
+      ? `${new Intl.NumberFormat("en-US").format(monthlyDownloads)} last 30d`
+      : "npm downloads";
+  const starsLabel =
+    typeof githubStars === "number" && Number.isFinite(githubStars)
+      ? `${new Intl.NumberFormat("en-US").format(githubStars)} stars`
+      : null;
 
   const copyCmd = () => {
     navigator.clipboard.writeText("npx zuro-cli init my-mvp");
@@ -93,11 +106,21 @@ export function HeroSection() {
           >
             npm package
             <span className="rounded border border-emerald-400/35 bg-emerald-400/10 px-1.5 py-0.5 text-[10px] font-medium text-emerald-300">
-              downloads badge
+              {downloadsLabel}
             </span>
           </a>
-          <a href="https://github.com/BriyanPatel/zuro" target="_blank" rel="noreferrer" className="hover:text-zinc-300">
-            Maintained by Briyan Patel on GitHub
+          <a
+            href="https://github.com/BriyanPatel/zuro"
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-2 rounded-md border border-white/10 bg-white/[0.03] px-2.5 py-1.5 text-zinc-300 hover:text-white"
+          >
+            GitHub
+            {starsLabel && (
+              <span className="rounded border border-white/15 bg-white/5 px-1.5 py-0.5 text-[10px] font-medium text-zinc-300">
+                {starsLabel}
+              </span>
+            )}
           </a>
           <a href="https://github.com/BriyanPatel/zuro/releases" target="_blank" rel="noreferrer" className="hover:text-zinc-300">
             Changelog

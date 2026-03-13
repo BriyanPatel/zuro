@@ -19,7 +19,55 @@ export const metadata: Metadata = buildPageMetadata({
   ],
 });
 
-export default function Home() {
+type NpmDownloadsResponse = {
+  downloads?: number;
+};
+
+type GitHubRepoResponse = {
+  stargazers_count?: number;
+};
+
+async function getMonthlyNpmDownloads(): Promise<number | null> {
+  try {
+    const response = await fetch('https://api.npmjs.org/downloads/point/last-month/zuro-cli', {
+      next: { revalidate: 60 * 60 * 12 },
+    });
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const data = (await response.json()) as NpmDownloadsResponse;
+    return typeof data.downloads === 'number' ? data.downloads : null;
+  } catch {
+    return null;
+  }
+}
+
+async function getGitHubStars(): Promise<number | null> {
+  try {
+    const response = await fetch('https://api.github.com/repos/BriyanPatel/zuro', {
+      next: { revalidate: 60 * 60 * 12 },
+      headers: { Accept: 'application/vnd.github+json' },
+    });
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const data = (await response.json()) as GitHubRepoResponse;
+    return typeof data.stargazers_count === 'number' ? data.stargazers_count : null;
+  } catch {
+    return null;
+  }
+}
+
+export default async function Home() {
+  const [monthlyDownloads, githubStars] = await Promise.all([
+    getMonthlyNpmDownloads(),
+    getGitHubStars(),
+  ]);
+
   return (
     <>
       <JsonLd data={buildOrganizationJsonLd()} />
@@ -35,7 +83,7 @@ export default function Home() {
           )
         }
       />
-      <ProfessionalLanding />
+      <ProfessionalLanding monthlyDownloads={monthlyDownloads} githubStars={githubStars} />
     </>
   );
 }

@@ -7,7 +7,12 @@ import { FaqSection } from "./sections/FaqSection";
 import { CtaSection } from "./sections/CtaSection";
 import { LandingFooter } from "./sections/LandingFooter";
 
-export function ProfessionalLanding() {
+type ProfessionalLandingProps = {
+  monthlyDownloads?: number | null;
+  githubStars?: number | null;
+};
+
+export function ProfessionalLanding({ monthlyDownloads, githubStars }: ProfessionalLandingProps) {
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100">
       <div className="pointer-events-none fixed inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.025)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.025)_1px,transparent_1px)] bg-[size:68px_68px]" />
@@ -17,7 +22,7 @@ export function ProfessionalLanding() {
       <LandingHeader />
 
       <main className="relative z-10 mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
-        <HeroSection />
+        <HeroSection monthlyDownloads={monthlyDownloads} githubStars={githubStars} />
         <AudienceAndProblemSection />
         <ModulesSection />
         <ComparisonSection />

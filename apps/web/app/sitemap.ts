@@ -14,7 +14,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     return `/docs/${params.slug.join('/')}`;
   });
 
-  const staticPaths = ['/', '/docs', ...SEO_LANDING_PATHS];
+  const staticPaths = ['/', '/docs', '/privacy', ...SEO_LANDING_PATHS];
   const uniquePaths = Array.from(new Set([...staticPaths, ...docsPaths]));
 
   return uniquePaths.map((path) => {

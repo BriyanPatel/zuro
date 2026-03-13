@@ -22,5 +22,9 @@
 - [Express Upload Module](https://zuro-cli.devbybriyan.com/express-upload-module)
 - [OpenAPI Starter for Express](https://zuro-cli.devbybriyan.com/openapi-starter-express)
 
+## Comparisons
+- [Zuro vs Manual Express Setup](https://zuro-cli.devbybriyan.com/zuro-vs-manual-express-setup)
+- [Zuro vs Framework Backend Starters](https://zuro-cli.devbybriyan.com/zuro-vs-framework-backend-starters)
+
 ## Canonical
 - [Homepage](https://zuro-cli.devbybriyan.com)

@@ -56,7 +56,10 @@ export function LandingFooter() {
         <p>
           Built by <a href="https://x.com/briyan_dev" target="_blank" rel="noreferrer" className="text-zinc-400 hover:text-zinc-200">Briyan Patel</a>
         </p>
-        <p>© {new Date().getFullYear()} Zuro</p>
+        <div className="flex items-center gap-4">
+          <Link href="/privacy" className="hover:text-zinc-300">Privacy Policy</Link>
+          <p>© {new Date().getFullYear()} Zuro</p>
+        </div>
       </div>
     </footer>
   );

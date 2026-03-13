@@ -147,3 +147,117 @@ Authorization: Bearer <access-token>
 npx drizzle-kit generate
 npx drizzle-kit migrate
 ```
+
+---
+
+## Protecting Routes
+
+Use the generated auth middleware to guard your routes.
+
+**Better Auth — protect a route with session check:**
+
+```ts
+// src/middleware/require-auth.ts
+import { auth } from "../lib/auth";
+import type { Request, Response, NextFunction } from "express";
+
+export async function requireAuth(req: Request, res: Response, next: NextFunction) {
+  const session = await auth.api.getSession({ headers: req.headers as Headers });
+  if (!session) {
+    return res.status(401).json({ status: "error", code: "UNAUTHORIZED" });
+  }
+  (req as Request & { user: typeof session.user }).user = session.user;
+  next();
+}
+```
+
+Apply it to any route:
+
+```ts
+import { requireAuth } from "../middleware/require-auth";
+
+router.get("/profile", requireAuth, async (req, res) => {
+  res.json({ user: (req as any).user });
+});
+```
+
+**JWT — protect a route with token verification:**
+
+The generated `src/lib/auth.ts` exports a `verifyAccessToken` helper. Use it in a middleware:
+
+```ts
+import { verifyAccessToken } from "../lib/auth";
+import type { Request, Response, NextFunction } from "express";
+
+export function requireAuth(req: Request, res: Response, next: NextFunction) {
+  const header = req.headers.authorization;
+  if (!header?.startsWith("Bearer ")) {
+    return res.status(401).json({ status: "error", code: "UNAUTHORIZED" });
+  }
+  try {
+    const payload = verifyAccessToken(header.slice(7));
+    (req as any).user = payload;
+    next();
+  } catch {
+    res.status(401).json({ status: "error", code: "TOKEN_EXPIRED" });
+  }
+}
+```
+
+---
+
+## Token Refresh Flow (JWT)
+
+Access tokens expire quickly (default `15m`). Use the refresh endpoint to get a new one without re-authenticating:
+
+```bash
+curl -X POST http://localhost:3000/api/auth/refresh \
+  -H "Content-Type: application/json" \
+  -d '{ "refreshToken": "<your-refresh-token>" }'
+```
+
+Response:
+
+```json
+{
+  "accessToken": "<new-access-token>",
+  "refreshToken": "<new-refresh-token>"
+}
+```
+
+Refresh tokens are rotated on each use — the old token is invalidated immediately. Store the latest refresh token securely (httpOnly cookie or secure local storage).
+
+---
+
+## Troubleshooting
+
+**`BETTER_AUTH_SECRET must be at least 32 characters`**
+Generate a valid secret:
+```bash
+openssl rand -base64 32
+```
+
+**`Cannot find module 'better-auth'`**
+The auth module auto-installs dependencies, but if install failed mid-run:
+```bash
+npm install better-auth
+```
+
+**JWT `TokenExpiredError` on every request**
+Your `JWT_ACCESS_EXPIRES_IN` may be too short or your system clock is out of sync. Verify:
+```bash
+node -e "console.log(new Date().toISOString())"
+```
+
+**Database migration fails after adding auth**
+Auth generates a schema file at `src/db/schema/auth.ts`. Run migrations after adding the module:
+```bash
+npx drizzle-kit generate
+npx drizzle-kit migrate
+```
+
+**Session not persisting with Better Auth**
+Ensure your frontend sends credentials with requests:
+```ts
+fetch('/api/auth/get-session', { credentials: 'include' });
+```
